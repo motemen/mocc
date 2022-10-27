@@ -1,7 +1,7 @@
 #include "9cv.h"
 #include <stdio.h>
 
-void visit(Node *node) {
+void codegen_visit(Node *node) {
   if (node->kind == ND_NUM) {
     printf("  li t0, %d\n", node->val);
 
@@ -9,8 +9,8 @@ void visit(Node *node) {
     printf("  sw t0, -4(sp)\n");
     printf("  addi sp, sp, -4\n");
   } else if (node->kind == ND_LT) {
-    visit(node->lhs);
-    visit(node->rhs);
+    codegen_visit(node->lhs);
+    codegen_visit(node->rhs);
 
     // pop rhs -> t1
     printf("  lw t1, 0(sp)\n");
@@ -26,8 +26,8 @@ void visit(Node *node) {
     printf("  sw t0, -4(sp)\n");
     printf("  addi sp, sp, -4\n");
   } else if (node->kind == ND_GE) {
-    visit(node->lhs);
-    visit(node->rhs);
+    codegen_visit(node->lhs);
+    codegen_visit(node->rhs);
 
     // pop rhs -> t1
     printf("  lw t1, 0(sp)\n");
@@ -45,8 +45,8 @@ void visit(Node *node) {
     printf("  addi sp, sp, -4\n");
   } else if (node->kind == ND_ADD || node->kind == ND_SUB ||
              node->kind == ND_MUL || node->kind == ND_DIV) {
-    visit(node->lhs);
-    visit(node->rhs);
+    codegen_visit(node->lhs);
+    codegen_visit(node->rhs);
 
     // pop rhs -> t1
     printf("  lw t1, 0(sp)\n");

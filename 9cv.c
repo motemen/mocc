@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   token = tokenize(user_input);
-  Node *node = expr();
+  Node *node = parse_expr();
 
   if (token != NULL && token->kind != TK_EOF) {
     error("not all tokens are consumed");
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
   printf(".global main\n");
   printf("main:\n");
 
-  visit(node);
+  codegen_visit(node);
 
   // pop -> t0
   printf("  lw t0, 0(sp)\n");

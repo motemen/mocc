@@ -1,5 +1,6 @@
 typedef enum {
   TK_RESERVED,
+  TK_IDENT,
   TK_NUM,
   TK_EOF,
 } TokenKind;
@@ -40,5 +41,5 @@ struct Node {
 void error(char *fmt, ...);
 
 Token *tokenize(char *p);
-Node *expr();
-void visit(Node *node);
+Node *parse_expr();
+void codegen_visit(Node *node);

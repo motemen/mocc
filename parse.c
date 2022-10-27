@@ -7,7 +7,7 @@
 Token *token;
 
 // Consumes a token matching op operator
-bool consume(char *op) {
+static bool token_consume(char *op) {
   if (token->kind != TK_RESERVED || token->len != strlen(op) ||
       strncmp(token->str, op, token->len) != 0) {
     return false;
@@ -17,7 +17,7 @@ bool consume(char *op) {
   return true;
 }
 
-void expect(char *op) {
+static void token_expect(char *op) {
   if (token->kind != TK_RESERVED || token->len != strlen(op) ||
       strncmp(token->str, op, token->len) != 0) {
     error("not '%c'", op);
@@ -26,7 +26,7 @@ void expect(char *op) {
   token = token->next;
 }
 
-int expect_number() {
+static int token_expect_number() {
   if (token->kind != TK_NUM) {
     error("not a number");
   }
@@ -36,9 +36,7 @@ int expect_number() {
   return val;
 }
 
-bool at_eof() { return token->kind == TK_EOF; }
-
-Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
+static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
@@ -48,7 +46,7 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   return tok;
 }
 
-Token *new_token_num(Token *cur, int val) {
+static Token *new_token_num(Token *cur, int val) {
   Token *tok = new_token(TK_NUM, cur, NULL, 0);
   tok->val = val;
   return tok;
@@ -89,7 +87,7 @@ Token *tokenize(char *p) {
   return head.next;
 }
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
   node->lhs = lhs;
@@ -97,7 +95,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   return node;
 }
 
-Node *new_node_num(int val) {
+static Node *new_node_num(int val) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_NUM;
   node->val = val;
@@ -113,83 +111,83 @@ Node *new_node_num(int val) {
 //    unary       = ("+" | "-")? primary
 //    primary     = num | "(" expr ")"
 
-Node *primary() {
-  if (consume("(")) {
-    Node *node = expr();
-    expect(")");
+static Node *parse_primary() {
+  if (token_consume("(")) {
+    Node *node = parse_expr();
+    token_expect(")");
     return node;
   }
 
-  int val = expect_number();
+  int val = token_expect_number();
   return new_node_num(val);
 }
 
-Node *unary() {
-  if (consume("+")) {
-    return primary();
+static Node *parse_unary() {
+  if (token_consume("+")) {
+    return parse_primary();
   }
 
-  if (consume("-")) {
-    return new_node(ND_SUB, new_node_num(0), primary());
+  if (token_consume("-")) {
+    return new_node(ND_SUB, new_node_num(0), parse_primary());
   }
 
-  return primary();
+  return parse_primary();
 }
 
-Node *mul() {
-  Node *node = unary();
+static Node *parse_mul() {
+  Node *node = parse_unary();
   for (;;) {
-    if (consume("*")) {
-      node = new_node(ND_MUL, node, unary());
-    } else if (consume("/")) {
-      node = new_node(ND_DIV, node, unary());
+    if (token_consume("*")) {
+      node = new_node(ND_MUL, node, parse_unary());
+    } else if (token_consume("/")) {
+      node = new_node(ND_DIV, node, parse_unary());
     } else {
       return node;
     }
   }
 }
 
-Node *add() {
-  Node *node = mul();
+static Node *parse_add() {
+  Node *node = parse_mul();
   for (;;) {
-    if (consume("+")) {
-      node = new_node(ND_ADD, node, mul());
-    } else if (consume("-")) {
-      node = new_node(ND_SUB, node, mul());
+    if (token_consume("+")) {
+      node = new_node(ND_ADD, node, parse_mul());
+    } else if (token_consume("-")) {
+      node = new_node(ND_SUB, node, parse_mul());
     } else {
       return node;
     }
   }
 }
 
-Node *relational() {
-  Node *node = add();
+static Node *parse_relational() {
+  Node *node = parse_add();
   for (;;) {
-    if (consume("<")) {
-      node = new_node(ND_LT, node, add());
-    } else if (consume(">")) {
-      node = new_node(ND_LT, add(), node);
-    } else if (consume("<=")) {
-      node = new_node(ND_GE, add(), node);
-    } else if (consume(">=")) {
-      node = new_node(ND_GE, node, add());
+    if (token_consume("<")) {
+      node = new_node(ND_LT, node, parse_add());
+    } else if (token_consume(">")) {
+      node = new_node(ND_LT, parse_add(), node);
+    } else if (token_consume("<=")) {
+      node = new_node(ND_GE, parse_add(), node);
+    } else if (token_consume(">=")) {
+      node = new_node(ND_GE, node, parse_add());
     } else {
       return node;
     }
   }
 }
 
-Node *equality() {
-  Node *node = relational();
+static Node *parse_equality() {
+  Node *node = parse_relational();
   for (;;) {
-    if (consume("==")) {
-      node = new_node(ND_EQ, node, relational());
-    } else if (consume("!=")) {
-      node = new_node(ND_NE, node, relational());
+    if (token_consume("==")) {
+      node = new_node(ND_EQ, node, parse_relational());
+    } else if (token_consume("!=")) {
+      node = new_node(ND_NE, node, parse_relational());
     } else {
       return node;
     }
   }
 }
 
-Node *expr() { return equality(); }
+Node *parse_expr() { return parse_equality(); }
