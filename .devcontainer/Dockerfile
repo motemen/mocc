@@ -36,3 +36,5 @@ RUN git clone --depth=1 https://github.com/riscv-software-src/riscv-pk.git && \
     make install
 
 RUN cd .. && rm -rf src
+
+RUN apt-get install -y clangd-12 && update-alternatives --install /usr/bin/clangd clangd /usr/bin/clangd-12 100
