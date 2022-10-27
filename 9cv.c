@@ -125,7 +125,13 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()", *p)) {
+    if (strncmp(p, "<=", 2) == 0 || strncmp(p, ">=", 2) == 0) {
+      cur = new_token(TK_RESERVED, cur, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (strchr("+-*/()<>", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -263,6 +269,10 @@ int main(int argc, char **argv) {
   user_input = argv[1];
   token = tokenize(user_input);
   Node *node = expr();
+
+  if (token != NULL && token->kind != TK_EOF) {
+    error("not all tokens are consumed");
+  }
 
   printf(".global main\n");
   printf("main:\n");
