@@ -114,7 +114,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-') {
+    if (strchr("+-*/()", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       continue;
     }
@@ -152,11 +152,13 @@ Node *new_node_num(int val) {
 //    mul     = primary ("*" primary | "/" primary)*
 //    primary = num | "(" expr ")"
 
+Node *expr();
+
 Node *primary() {
   if (consume('(')) {
-    int val = expect_number();
+    Node *node = expr();
     expect(')');
-    return new_node_num(val);
+    return node;
   }
 
   int val = expect_number();
@@ -196,7 +198,8 @@ void visit(Node *node) {
     // push
     printf("  sw t0, -4(sp)\n");
     printf("  addi sp, sp, -4\n");
-  } else if (node->kind == ND_ADD || node->kind == ND_SUB) {
+  } else if (node->kind == ND_ADD || node->kind == ND_SUB ||
+             node->kind == ND_MUL) {
     visit(node->lhs);
     visit(node->rhs);
 
@@ -212,6 +215,8 @@ void visit(Node *node) {
       printf("  add t0, t0, t1\n");
     } else if (node->kind == ND_SUB) {
       printf("  sub t0, t0, t1\n");
+    } else if (node->kind == ND_MUL) {
+      printf("  mul t0, t0, t1\n");
     } else {
       error("not implemented: %d", node->kind);
     }
