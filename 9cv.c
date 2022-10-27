@@ -28,6 +28,12 @@ typedef enum {
   ND_SUB, // -
   ND_MUL, // *
   ND_DIV, // /
+  ND_EQ,  // ==
+  ND_NE,  // !=
+  ND_LT,  // <
+  ND_LE,  // <=
+  ND_GT,  // >
+  ND_GE,  // >=
   ND_NUM, // numbers
 } NodeKind;
 
@@ -125,7 +131,8 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strncmp(p, "<=", 2) == 0 || strncmp(p, ">=", 2) == 0) {
+    if (strncmp(p, "<=", 2) == 0 || strncmp(p, ">=", 2) == 0 ||
+        strncmp(p, "==", 2) == 0 || strncmp(p, "!=", 2) == 0) {
       cur = new_token(TK_RESERVED, cur, p, 2);
       p += 2;
       continue;
@@ -164,10 +171,13 @@ Node *new_node_num(int val) {
 }
 
 // syntax:
-//    expr    = mul ("+" mul | "-" mul)*
-//    mul     = unary ("*" unary | "/" unary)*
-//    unary   = ("+" | "-")? primary
-//    primary = num | "(" expr ")"
+//    expr        = equality
+//    equality    = relational ("==" relational | "!=" relational)*
+//    relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
+//    add         = mul ("+" mul | "-" mul)*
+//    mul         = unary ("*" unary | "/" unary)*
+//    unary       = ("+" | "-")? primary
+//    primary     = num | "(" expr ")"
 
 Node *expr();
 
@@ -207,7 +217,7 @@ Node *mul() {
   }
 }
 
-Node *expr() {
+Node *add() {
   Node *node = mul();
   for (;;) {
     if (consume("+")) {
@@ -220,9 +230,58 @@ Node *expr() {
   }
 }
 
+Node *relational() {
+  Node *node = add();
+  for (;;) {
+    if (consume("<")) {
+      node = new_node(ND_LT, node, add());
+    } else if (consume(">")) {
+      node = new_node(ND_GT, node, add());
+    } else if (consume("<=")) {
+      node = new_node(ND_LE, node, add());
+    } else if (consume(">=")) {
+      node = new_node(ND_GE, node, add());
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *equality() {
+  Node *node = relational();
+  for (;;) {
+    if (consume("==")) {
+      node = new_node(ND_EQ, node, relational());
+    } else if (consume("!=")) {
+      node = new_node(ND_NE, node, relational());
+    } else {
+      return node;
+    }
+  }
+}
+
+Node *expr() { return equality(); }
+
 void visit(Node *node) {
   if (node->kind == ND_NUM) {
     printf("  li t0, %d\n", node->val);
+
+    // push
+    printf("  sw t0, -4(sp)\n");
+    printf("  addi sp, sp, -4\n");
+  } else if (node->kind == ND_LT) {
+    visit(node->lhs);
+    visit(node->rhs);
+
+    // pop rhs -> t1
+    printf("  lw t1, 0(sp)\n");
+    printf("  addi sp, sp, 4\n");
+
+    // pop lhs -> t0
+    printf("  lw t0, 0(sp)\n");
+    printf("  addi sp, sp, 4\n");
+
+    printf("  slt t0, t0, t1\n");
 
     // push
     printf("  sw t0, -4(sp)\n");
@@ -249,7 +308,7 @@ void visit(Node *node) {
     } else if (node->kind == ND_DIV) {
       printf("  div t0, t0, t1\n");
     } else {
-      error("not implemented: %d", node->kind);
+      error("unreachable");
     }
 
     // push
