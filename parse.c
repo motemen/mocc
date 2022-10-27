@@ -44,6 +44,8 @@ static bool token_consume(char *op) {
   return true;
 }
 
+bool token_at_eof() { return token->kind == TK_EOF; }
+
 static void token_expect(char *op) {
   if (token->kind != TK_RESERVED || token->len != strlen(op) ||
       strncmp(token->str, op, token->len) != 0) {
@@ -251,3 +253,19 @@ static Node *parse_assign() {
 }
 
 Node *parse_expr() { return parse_assign(); }
+
+Node *parse_stmt() {
+  Node *node = parse_expr();
+  token_expect(";");
+  return node;
+}
+
+Node *code[100];
+
+void parse_program() {
+  int i = 0;
+  while (!token_at_eof()) {
+    code[i++] = parse_stmt();
+  }
+  code[i] = NULL;
+}
