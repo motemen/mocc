@@ -1,18 +1,16 @@
 #!/bin/bash
 
-set -e
-
 assert() {
   expected="$1"
   input="$2"
 
-  ./9cv "$input" > tmp.s
-  riscv64-$RISCV_HOST-gcc -static -o tmp tmp.s
+  echo "# input: $input" >&2
 
-  set +e
+  ./9cv "$input" > tmp.s || return 1
+  riscv64-$RISCV_HOST-gcc -static -o tmp tmp.s || return 1
+
   spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp
   actual="$?"
-  set -e
 
   if [ "$actual" = "$expected" ]; then
     echo "$input => $actual"
