@@ -6,6 +6,33 @@
 
 Token *token;
 
+char *node_kind_to_str(NodeKind kind) {
+  switch (kind) {
+  case ND_NUM:
+    return "ND_NUM";
+  case ND_LT:
+    return "ND_LT";
+  case ND_GE:
+    return "ND_GE";
+  case ND_ADD:
+    return "ND_ADD";
+  case ND_SUB:
+    return "ND_SUB";
+  case ND_MUL:
+    return "ND_MUL";
+  case ND_DIV:
+    return "ND_DIV";
+  case ND_EQ:
+    return "ND_EQ";
+  case ND_NE:
+    return "ND_NE";
+  case ND_LVAR:
+    return "ND_LVAR";
+  case ND_ASSIGN:
+    return "ND_ASSIGN";
+  }
+}
+
 // Consumes a token matching op operator
 static bool token_consume(char *op) {
   if (token->kind != TK_RESERVED || token->len != strlen(op) ||
@@ -34,6 +61,16 @@ static int token_expect_number() {
   int val = token->val;
   token = token->next;
   return val;
+}
+
+static Token *token_consume_ident() {
+  if (token->kind != TK_IDENT) {
+    return NULL;
+  }
+
+  Token *tok = token;
+  token = token->next;
+  return token;
 }
 
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
@@ -70,8 +107,13 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>", *p)) {
+    if (strchr("+-*/()<>=", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
+      continue;
+    }
+
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++, 1);
       continue;
     }
 
@@ -103,18 +145,28 @@ static Node *new_node_num(int val) {
 }
 
 // syntax:
-//    expr        = equality
+//    expr        = assign
+//    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
 //    relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
 //    add         = mul ("+" mul | "-" mul)*
 //    mul         = unary ("*" unary | "/" unary)*
 //    unary       = ("+" | "-")? primary
-//    primary     = num | "(" expr ")"
+//    primary     = num | ident | "(" expr ")"
+//    ident	      = "a" .. "z"
 
 static Node *parse_primary() {
   if (token_consume("(")) {
     Node *node = parse_expr();
     token_expect(")");
+    return node;
+  }
+
+  Token *tok = token_consume_ident();
+  if (tok != NULL) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = (token->str[0] - 'a' + 1) * 8;
     return node;
   }
 
@@ -190,4 +242,12 @@ static Node *parse_equality() {
   }
 }
 
-Node *parse_expr() { return parse_equality(); }
+static Node *parse_assign() {
+  Node *node = parse_equality();
+  if (token_consume("=")) {
+    node = new_node(ND_ASSIGN, node, parse_equality());
+  }
+  return node;
+}
+
+Node *parse_expr() { return parse_assign(); }

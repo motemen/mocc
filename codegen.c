@@ -72,6 +72,6 @@ void codegen_visit(Node *node) {
     printf("  sw t0, -4(sp)\n");
     printf("  addi sp, sp, -4\n");
   } else {
-    error("not implemented: %d", node->kind);
+    error("codegen not implemented: %s", node_kind_to_str(node->kind));
   }
 }
