@@ -199,7 +199,7 @@ void visit(Node *node) {
     printf("  sw t0, -4(sp)\n");
     printf("  addi sp, sp, -4\n");
   } else if (node->kind == ND_ADD || node->kind == ND_SUB ||
-             node->kind == ND_MUL) {
+             node->kind == ND_MUL || node->kind == ND_DIV) {
     visit(node->lhs);
     visit(node->rhs);
 
@@ -217,6 +217,8 @@ void visit(Node *node) {
       printf("  sub t0, t0, t1\n");
     } else if (node->kind == ND_MUL) {
       printf("  mul t0, t0, t1\n");
+    } else if (node->kind == ND_DIV) {
+      printf("  div t0, t0, t1\n");
     } else {
       error("not implemented: %d", node->kind);
     }
