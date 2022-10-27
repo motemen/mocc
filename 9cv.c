@@ -32,8 +32,6 @@ typedef enum {
   ND_NE,  // !=
   ND_LT,  // <
   ND_LE,  // <=
-  ND_GT,  // >
-  ND_GE,  // >=
   ND_NUM, // numbers
 } NodeKind;
 
@@ -236,11 +234,11 @@ Node *relational() {
     if (consume("<")) {
       node = new_node(ND_LT, node, add());
     } else if (consume(">")) {
-      node = new_node(ND_GT, node, add());
+      node = new_node(ND_LT, add(), node);
     } else if (consume("<=")) {
       node = new_node(ND_LE, node, add());
     } else if (consume(">=")) {
-      node = new_node(ND_GE, node, add());
+      node = new_node(ND_LE, add(), node);
     } else {
       return node;
     }
