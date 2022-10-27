@@ -31,7 +31,7 @@ typedef enum {
   ND_EQ,  // ==
   ND_NE,  // !=
   ND_LT,  // <
-  ND_LE,  // <=
+  ND_GE,  // >=
   ND_NUM, // numbers
 } NodeKind;
 
@@ -236,9 +236,9 @@ Node *relational() {
     } else if (consume(">")) {
       node = new_node(ND_LT, add(), node);
     } else if (consume("<=")) {
-      node = new_node(ND_LE, node, add());
+      node = new_node(ND_GE, add(), node);
     } else if (consume(">=")) {
-      node = new_node(ND_LE, add(), node);
+      node = new_node(ND_GE, node, add());
     } else {
       return node;
     }
@@ -280,6 +280,24 @@ void visit(Node *node) {
     printf("  addi sp, sp, 4\n");
 
     printf("  slt t0, t0, t1\n");
+
+    // push
+    printf("  sw t0, -4(sp)\n");
+    printf("  addi sp, sp, -4\n");
+  } else if (node->kind == ND_GE) {
+    visit(node->lhs);
+    visit(node->rhs);
+
+    // pop rhs -> t1
+    printf("  lw t1, 0(sp)\n");
+    printf("  addi sp, sp, 4\n");
+
+    // pop lhs -> t0
+    printf("  lw t0, 0(sp)\n");
+    printf("  addi sp, sp, 4\n");
+
+    printf("  slt t0, t0, t1\n");
+    printf("  xori t0, t0, 1\n");
 
     // push
     printf("  sw t0, -4(sp)\n");

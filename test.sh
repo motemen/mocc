@@ -37,5 +37,8 @@ assert 1 '1<(11*9)'
 assert 0 '13<13'
 assert 1 '(1+1)>1'
 assert 0 '13>13'
+assert 1 '13>=13'
+assert 1 '13<=13'
+assert 0 '42>=43'
 
 echo OK
