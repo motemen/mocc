@@ -4,6 +4,7 @@ typedef enum {
   TK_IF,
   TK_ELSE,
   TK_WHILE,
+  TK_FOR,
   TK_IDENT,
   TK_NUM,
   TK_EOF,
@@ -50,6 +51,7 @@ typedef enum {
   ND_RETURN,
   ND_IF,
   ND_WHILE,
+  ND_FOR,
 } NodeKind;
 
 struct Node {
@@ -57,7 +59,8 @@ struct Node {
 
   Node *lhs; // ND_IF, ND_WHILE のときは expr
   Node *rhs; // ND_IF, ND_WHILE のときは stmt
-  Node *else_stmt;
+  Node *node3; // ND_IF のときは else, ND_FOR のときは i++ みたいなとこ
+  Node *node4; // ND_FOR のときのみ stmt
 
   int val;    // used when kind == ND_NUM
   LVar *lvar; // used when kind == ND_LVAR

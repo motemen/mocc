@@ -39,6 +39,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_IF";
   case ND_WHILE:
     return "ND_WHILE";
+  case ND_FOR:
+    return "ND_FOR";
   }
 
   return "(unknown)";
@@ -160,6 +162,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("for", p, 3) == 0 && !isident(p[3])) {
+      cur = new_token(TK_FOR, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
     if (('a' <= *p && *p <= 'z') || *p == '_') {
       int n = 1;
       while (*(p + n) && isident(*(p + n))) {
@@ -243,6 +251,7 @@ LVar *find_or_add_lvar(char *name, int len) {
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
 //                | "while" "(" expr ")" stmt
+//                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //    expr        = assign
 //    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -380,7 +389,7 @@ Node *parse_stmt() {
     node->kind = ND_IF;
     node->lhs = expr;
     node->rhs = stmt;
-    node->else_stmt = else_stmt;
+    node->node3 = else_stmt;
     node->source_pos = expr->source_pos;
     node->source_len = expr->source_len; // ではないのだが FIXME
     return node;
@@ -395,6 +404,35 @@ Node *parse_stmt() {
     node->lhs = parse_expr();
     token_expect(")");
     node->rhs = parse_stmt();
+
+    return node;
+  }
+
+  if (token_consume(TK_FOR)) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_FOR;
+    node->source_pos = token->str;
+    node->source_len = token->len; // ちがうけど…
+    token_expect("(");
+
+    if (!token_consume_reserved(";")) {
+      node->lhs = parse_expr();
+      token_expect(";");
+    }
+
+    if (!token_consume_reserved(";")) {
+      node->rhs = parse_expr();
+      token_expect(";");
+    }
+
+    if (!token_consume_reserved(")")) {
+      node->node3 = parse_expr();
+      token_expect(")");
+    }
+
+    if (!token_consume_reserved(";")) {
+      node->node4 = parse_stmt();
+    }
 
     return node;
   }

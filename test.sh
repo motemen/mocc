@@ -57,5 +57,7 @@ assert 0 'if (0) return 1; return 0;'
 assert 1 'if (1) return 1; return 0;'
 assert 2 'if (0) return 1; else return 2; return 0;'
 assert 6 'a = 0; while (a < 6) a = a + 1; return a;'
+assert 7 'for (a = 0; a < 7; a = a + 1) ; return a;'
+assert 8 'a = 0; for (; a < 8; ) a = a + 1; return a;'
 
 echo OK

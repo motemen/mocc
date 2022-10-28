@@ -165,8 +165,8 @@ void codegen_visit(Node *node) {
 
     // else {
     printf(".Lelse%03d:\n", lindex);
-    if (node->else_stmt) {
-      codegen_visit(node->else_stmt);
+    if (node->node3) {
+      codegen_visit(node->node3);
     }
     // }
 
@@ -186,6 +186,38 @@ void codegen_visit(Node *node) {
     codegen_visit(node->rhs);
 
     printf("  j .Lbegin%03d\n", lindex);
+
+    printf(".Lend%03d:\n", lindex);
+
+    return;
+
+  case ND_FOR:
+    lindex = ++label_index;
+
+    if (node->lhs) {
+      codegen_visit(node->lhs);
+    }
+
+    printf(".Lbegin%03d:\n", lindex);
+
+    if (node->rhs) {
+      codegen_visit(node->rhs);
+      codegen_pop_t0();
+      printf("  beqz t0, .Lend%03d\n", lindex);
+    }
+
+    // {
+    if (node->node4) {
+      codegen_visit(node->node4);
+    }
+    // }
+
+    // i++ みたいなとこ
+    if (node->node3) {
+      codegen_visit(node->node3);
+    }
+
+    printf("j .Lbegin%03d\n", lindex);
 
     printf(".Lend%03d:\n", lindex);
 
