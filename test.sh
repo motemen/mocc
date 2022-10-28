@@ -56,5 +56,6 @@ assert 5 'a = 1; b = a * 2; return b + 3; 999;'
 assert 0 'if (0) return 1; return 0;'
 assert 1 'if (1) return 1; return 0;'
 assert 2 'if (0) return 1; else return 2; return 0;'
+assert 6 'a = 0; while (a < 6) a = a + 1; return a;'
 
 echo OK

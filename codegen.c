@@ -20,7 +20,11 @@ void codegen_push_t0() {
   printf("  addi sp, sp, -8\n");
 }
 
+int label_index = 0;
+
 void codegen_visit(Node *node) {
+  int lindex;
+
   switch (node->kind) {
   case ND_NUM:
     printf("  li t0, %d\n", node->val);
@@ -146,25 +150,44 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_IF:
+    lindex = ++label_index;
+
     codegen_visit(node->lhs);
 
     codegen_pop_t0();
 
-    printf("  beqz t0, .ELSE1\n");
+    printf("  beqz t0, .Lelse%03d\n", lindex);
 
     // if {
     codegen_visit(node->rhs);
-    printf("j .END1\n");
+    printf("j .Lend%03d\n", lindex);
     // }
 
     // else {
-    printf(".ELSE1:\n");
+    printf(".Lelse%03d:\n", lindex);
     if (node->else_stmt) {
       codegen_visit(node->else_stmt);
     }
     // }
 
-    printf(".END1:\n");
+    printf(".Lend%03d:\n", lindex);
+
+    return;
+
+  case ND_WHILE:
+    lindex = ++label_index;
+
+    printf(".Lbegin%03d:\n", lindex);
+
+    codegen_visit(node->lhs);
+    codegen_pop_t0();
+    printf("  beqz t0, .Lend%03d\n", lindex);
+
+    codegen_visit(node->rhs);
+
+    printf("  j .Lbegin%03d\n", lindex);
+
+    printf(".Lend%03d:\n", lindex);
 
     return;
   }
