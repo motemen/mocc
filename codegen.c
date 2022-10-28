@@ -307,8 +307,21 @@ void codegen_visit(Node *node) {
   }
 
   case ND_FUNCDECL:
+    printf("\n");
     printf("%.*s:\n", node->name_len, node->name);
+
     codegen_prologue();
+
+    int arg_count = 0;
+    for (NodeList *a = node->args; a; a = a->next) {
+      // a0 を lvar xyz に代入するみたいなことをする
+      printf("  # assign to argument '%.*s'\n", a->node->source_len,
+             a->node->source_pos);
+      printf("  sw a%d, -%d(fp)\n", arg_count, a->node->lvar->offset);
+
+      arg_count++;
+    }
+
     for (NodeList *n = node->nodes; n; n = n->next) {
       codegen_visit(n->node);
       codegen_pop_t0();

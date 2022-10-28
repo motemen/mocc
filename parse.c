@@ -225,6 +225,7 @@ LVar *find_lvar(char *name, int len) {
   return NULL;
 }
 
+// ここを関数ローカルにしないといけない!!!!!!!! どうするんだ!!!!!!!!
 LVar *find_or_add_lvar(char *name, int len) {
   LVar *last_var = locals;
   int i = 0;
@@ -252,8 +253,8 @@ LVar *find_or_add_lvar(char *name, int len) {
 ///// Parser /////
 
 // Syntax:
-//    program     = stmt*
-//    funcdecl    = ident "(" ")" "{" stmt* "}"
+//    program     = funcdecl*
+//    funcdecl    = ident "(" expr ("," expr)* ")" "{" stmt* "}"
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
@@ -520,21 +521,54 @@ Node *parse_funcdecl() {
     error("expected ident");
   }
 
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_FUNCDECL;
+  node->name = ident->str;
+  node->name_len = ident->len;
+  node->source_pos = ident->str;
+  node->source_len = ident->len;
+
   token_expect("(");
-  token_expect(")");
+
+  if (token_consume_reserved(")")) {
+    // 引数ナシ
+  } else {
+    NodeList head = {};
+    NodeList *cur = &head;
+    while (true) {
+      Token *tok = token_consume_ident();
+      if (!tok) {
+        error("expected ident");
+      }
+
+      Node *ident = calloc(1, sizeof(Node));
+      ident->kind = ND_LVAR;
+      LVar *lvar = find_or_add_lvar(tok->str, tok->len);
+      ident->lvar = lvar;
+      ident->source_pos = tok->str;
+      ident->source_len = tok->len;
+
+      NodeList *node_item = calloc(1, sizeof(NodeList));
+      node_item->node = ident;
+      cur->next = node_item;
+      cur = cur->next;
+
+      if (token_consume_reserved(")")) {
+        break;
+      }
+
+      token_expect(",");
+    }
+
+    node->args = head.next;
+  }
 
   Node *block = parse_block();
   if (!block) {
     error("expected block");
   }
 
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = ND_FUNCDECL;
   node->nodes = block->nodes;
-  node->name = ident->str;
-  node->name_len = ident->len;
-  node->source_pos = ident->str;
-  node->source_len = ident->len;
 
   return node;
 }

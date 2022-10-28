@@ -66,8 +66,15 @@ struct Node {
   Node *rhs; // ND_IF, ND_WHILE のときは stmt
   Node *node3; // ND_IF のときは else, ND_FOR のときは i++ みたいなとこ
   Node *node4; // ND_FOR のときのみ stmt
-  struct NodeList
-      *nodes; // ND_BLOCK のとき: stmt, ... ND_CALL のとき: args = expr, ...
+
+  // ND_BLOCK のとき: stmt, ...
+  // ND_CALL のとき: params = expr, ...
+  // ND_FUNCDECL のとき: args = ident, ...
+  struct NodeList *nodes;
+
+  // あとで locals とかにしたいかも？？
+  // すくなくとも LVar *にしたい気がする
+  struct NodeList *args;
 
   // ND_CALL のときだけ。関数名
   char *name;
