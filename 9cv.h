@@ -52,7 +52,10 @@ typedef enum {
   ND_IF,
   ND_WHILE,
   ND_FOR,
+  ND_BLOCK,
 } NodeKind;
+
+struct NodeList;
 
 struct Node {
   NodeKind kind;
@@ -60,7 +63,8 @@ struct Node {
   Node *lhs; // ND_IF, ND_WHILE のときは expr
   Node *rhs; // ND_IF, ND_WHILE のときは stmt
   Node *node3; // ND_IF のときは else, ND_FOR のときは i++ みたいなとこ
-  Node *node4; // ND_FOR のときのみ stmt
+  Node *node4;            // ND_FOR のときのみ stmt
+  struct NodeList *nodes; // ND_BLOCK のときのみ stmt, ...
 
   int val;    // used when kind == ND_NUM
   LVar *lvar; // used when kind == ND_LVAR
@@ -68,6 +72,11 @@ struct Node {
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用
 };
+
+typedef struct NodeList {
+  Node *node;
+  struct NodeList *next;
+} NodeList;
 
 void error(char *fmt, ...);
 void error_at(char *loc, char *fmt, ...);

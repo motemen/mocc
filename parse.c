@@ -41,6 +41,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_WHILE";
   case ND_FOR:
     return "ND_FOR";
+  case ND_BLOCK:
+    return "ND_BLOCK";
   }
 
   return "(unknown)";
@@ -133,7 +135,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>=;", *p)) {
+    if (strchr("+-*/()<>=;{}", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -252,6 +254,7 @@ LVar *find_or_add_lvar(char *name, int len) {
 //                | "if" "(" expr ")" stmt ("else" stmt)?
 //                | "while" "(" expr ")" stmt
 //                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//                | "{" stmt* "}"
 //    expr        = assign
 //    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -434,6 +437,26 @@ Node *parse_stmt() {
       node->node4 = parse_stmt();
     }
 
+    return node;
+  }
+
+  if (token_consume_reserved("{")) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+    node->source_pos = token->str;
+    node->source_len = token->len;
+
+    NodeList head = {};
+    NodeList *cur = &head;
+    while (!token_consume_reserved("}")) {
+      Node *stmt = parse_stmt();
+      NodeList *node_item = calloc(1, sizeof(NodeList));
+      node_item->node = stmt;
+      cur->next = node_item;
+      cur = cur->next;
+    }
+
+    node->nodes = head.next;
     return node;
   }
 

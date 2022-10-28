@@ -6,10 +6,13 @@
 char *user_input;
 
 void verror_at(char *loc, char *fmt, va_list ap) {
-  int pos = loc - user_input;
-  fprintf(stderr, "%s\n", user_input);
-  fprintf(stderr, "%*s", pos, " ");
-  fprintf(stderr, "^ ");
+  if (loc) {
+    int pos = loc - user_input;
+    fprintf(stderr, "%s\n", user_input);
+    fprintf(stderr, "%*s", pos, " ");
+    fprintf(stderr, "^ ");
+  }
+
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
 
@@ -26,7 +29,11 @@ void error_at(char *loc, char *fmt, ...) {
 void error(char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
-  verror_at(token->str, fmt, ap);
+  if (!token) {
+    verror_at(NULL, fmt, ap);
+  } else {
+    verror_at(token->str, fmt, ap);
+  }
 }
 
 int main(int argc, char **argv) {

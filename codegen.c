@@ -26,6 +26,11 @@ void codegen_push_t0() {
   printf("  addi sp, sp, -8\n");
 }
 
+void codegen_push_dummy() {
+  printf("  # push dummy\n");
+  printf("  addi sp, sp, -8\n");
+}
+
 int label_index = 0;
 
 void codegen_visit(Node *node) {
@@ -214,6 +219,16 @@ void codegen_visit(Node *node) {
     printf("j .Lbegin%03d\n", lindex);
 
     printf(".Lend%03d:\n", lindex);
+
+    return;
+
+  case ND_BLOCK:
+    for (NodeList *n = node->nodes; n; n = n->next) {
+      codegen_visit(n->node);
+      codegen_pop_discard();
+    }
+
+    codegen_push_dummy();
 
     return;
   }
