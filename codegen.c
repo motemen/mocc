@@ -1,4 +1,5 @@
 #include "9cv.h"
+#include <assert.h>
 #include <stdio.h>
 
 // これ addi 4 にしたら死んだ
@@ -11,6 +12,11 @@ void codegen_pop_t0() {
 void codegen_pop_t1() {
   printf("  # pop t1\n");
   printf("  lw t1, 0(sp)\n");
+  printf("  addi sp, sp, 8\n");
+}
+
+void codegen_pop_discard() {
+  printf("  # pop\n");
   printf("  addi sp, sp, 8\n");
 }
 
@@ -34,34 +40,27 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_LT:
-    codegen_visit(node->lhs);
-    codegen_visit(node->rhs);
+    codegen_visit(node->lhs); // -> t0
+    codegen_visit(node->rhs); // -> t1
 
-    // pop rhs -> t1
     codegen_pop_t1();
-    // pop lhs -> t0
     codegen_pop_t0();
 
     printf("  slt t0, t0, t1\n");
 
-    // push
     codegen_push_t0();
     return;
 
   case ND_GE:
-    codegen_visit(node->lhs);
-    codegen_visit(node->rhs);
+    codegen_visit(node->lhs); // -> t0
+    codegen_visit(node->rhs); // -> t1
 
-    // pop rhs -> t1
     codegen_pop_t1();
-
-    // pop lhs -> t0
     codegen_pop_t0();
 
     printf("  slt t0, t0, t1\n");
     printf("  xori t0, t0, 1\n");
 
-    // push
     codegen_push_t0();
     return;
 
@@ -69,12 +68,10 @@ void codegen_visit(Node *node) {
   case ND_SUB:
   case ND_MUL:
   case ND_DIV:
-    codegen_visit(node->lhs);
-    codegen_visit(node->rhs);
+    codegen_visit(node->lhs); // -> t0
+    codegen_visit(node->rhs); // -> t1
 
-    // pop rhs -> t1
     codegen_pop_t1();
-    // pop lhs -> t0
     codegen_pop_t0();
 
     if (node->kind == ND_ADD) {
@@ -86,21 +83,18 @@ void codegen_visit(Node *node) {
     } else if (node->kind == ND_DIV) {
       printf("  div t0, t0, t1\n");
     } else {
-      error("unreachable");
+      assert(0);
     }
 
-    // push
     codegen_push_t0();
     return;
 
   case ND_EQ:
   case ND_NE:
-    codegen_visit(node->lhs);
-    codegen_visit(node->rhs);
+    codegen_visit(node->lhs); // -> t0
+    codegen_visit(node->rhs); // -> t1
 
-    // pop rhs -> t1
     codegen_pop_t1();
-    // pop lhs -> t0
     codegen_pop_t0();
 
     printf("  xor t0, t0, t1\n");
@@ -110,7 +104,6 @@ void codegen_visit(Node *node) {
       printf("  snez t0, t0\n");
     }
 
-    // push
     codegen_push_t0();
     return;
 
@@ -127,7 +120,6 @@ void codegen_visit(Node *node) {
     }
 
     codegen_visit(node->rhs);
-
     codegen_pop_t0();
 
     printf("  # assign to variable '%.*s'\n", node->lhs->source_len,
@@ -135,12 +127,10 @@ void codegen_visit(Node *node) {
     printf("  sw t0, -%d(fp)\n", node->lhs->lvar->offset);
 
     codegen_push_t0();
-
     return;
 
   case ND_RETURN:
     codegen_visit(node->lhs);
-
     codegen_pop_t0();
 
     printf("  # Set return value\n");
@@ -153,13 +143,13 @@ void codegen_visit(Node *node) {
     lindex = ++label_index;
 
     codegen_visit(node->lhs);
-
     codegen_pop_t0();
 
     printf("  beqz t0, .Lelse%03d\n", lindex);
 
     // if {
     codegen_visit(node->rhs);
+    codegen_pop_discard();
     printf("j .Lend%03d\n", lindex);
     // }
 
@@ -167,6 +157,7 @@ void codegen_visit(Node *node) {
     printf(".Lelse%03d:\n", lindex);
     if (node->node3) {
       codegen_visit(node->node3);
+      codegen_pop_discard();
     }
     // }
 
@@ -181,9 +172,11 @@ void codegen_visit(Node *node) {
 
     codegen_visit(node->lhs);
     codegen_pop_t0();
+
     printf("  beqz t0, .Lend%03d\n", lindex);
 
-    codegen_visit(node->rhs);
+    codegen_visit(node->rhs); // { ... }
+    codegen_pop_discard();
 
     printf("  j .Lbegin%03d\n", lindex);
 
@@ -196,6 +189,7 @@ void codegen_visit(Node *node) {
 
     if (node->lhs) {
       codegen_visit(node->lhs);
+      codegen_pop_discard();
     }
 
     printf(".Lbegin%03d:\n", lindex);
@@ -206,15 +200,15 @@ void codegen_visit(Node *node) {
       printf("  beqz t0, .Lend%03d\n", lindex);
     }
 
-    // {
     if (node->node4) {
-      codegen_visit(node->node4);
+      codegen_visit(node->node4); // { ... }
+      codegen_pop_discard();
     }
-    // }
 
     // i++ みたいなとこ
     if (node->node3) {
       codegen_visit(node->node3);
+      codegen_pop_discard();
     }
 
     printf("j .Lbegin%03d\n", lindex);
