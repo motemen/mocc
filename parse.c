@@ -7,6 +7,7 @@
 #include <string.h>
 
 Token *token;
+LVar *locals;
 
 char *node_kind_to_str(NodeKind kind) {
   switch (kind) {
@@ -93,6 +94,8 @@ static Token *new_token_num(Token *cur, int val) {
   return tok;
 }
 
+bool isident(char ch) { return isalnum(ch) || ch == '_'; }
+
 Token *tokenize(char *p) {
   Token head;
   head.next = NULL;
@@ -116,8 +119,15 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++, 1);
+    if (('a' <= *p && *p <= 'z') || *p == '_') {
+      int n = 1;
+      while (*(p + n) && isident(*(p + n))) {
+        n++;
+      }
+
+      cur = new_token(TK_IDENT, cur, p, n);
+      p += n;
+
       continue;
     }
 
@@ -150,6 +160,42 @@ static Node *new_node_num(int val) {
   return node;
 }
 
+LVar *find_lvar(char *name, int len) {
+  LVar *last_var = locals;
+  for (LVar *var = locals; var; last_var = var, var = var->next) {
+    if (var->len == len && !strncmp(var->name, name, len)) {
+      return var;
+    }
+  }
+  return NULL;
+}
+
+LVar *find_or_add_lvar(char *name, int len) {
+  LVar *last_var = locals;
+  int i;
+  for (LVar *var = locals; var; last_var = var, var = var->next) {
+    if (var->len == len && !strncmp(var->name, name, len)) {
+      return var;
+    }
+    i++;
+  }
+
+  LVar *var = calloc(1, sizeof(LVar));
+  var->name = name;
+  var->len = len;
+  var->offset = (i + 1) * 8;
+
+  if (last_var) {
+    last_var->next = var;
+  } else {
+    locals = var;
+  }
+
+  return var;
+}
+
+///// Parser /////
+
 // syntax:
 //    expr        = assign
 //    assign      = equality ("=" assign)?
@@ -159,7 +205,7 @@ static Node *new_node_num(int val) {
 //    mul         = unary ("*" unary | "/" unary)*
 //    unary       = ("+" | "-")? primary
 //    primary     = num | ident | "(" expr ")"
-//    ident	      = "a" .. "z"
+//    ident	      = /[a-z][a-z0-9]*/
 
 static Node *parse_primary() {
   if (token_consume("(")) {
@@ -173,7 +219,8 @@ static Node *parse_primary() {
   if (tok != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    node->offset = (tok->str[0] - 'a' + 1) * 8;
+    LVar *lvar = find_or_add_lvar(tok->str, tok->len);
+    node->lvar = lvar;
     node->source_pos = tok->str;
     node->source_len = tok->len;
     return node;

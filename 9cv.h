@@ -17,6 +17,15 @@ struct Token {
 
 extern Token *token;
 
+typedef struct LVar LVar;
+
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
 typedef struct Node Node;
 
 typedef enum {
@@ -38,7 +47,7 @@ struct Node {
   Node *lhs;
   Node *rhs;
   int val;    // used when kind == ND_NUM
-  int offset; // offset from stack pointer, ND_LVAR
+  LVar *lvar; // used when kind == ND_LVAR
 
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用
@@ -54,3 +63,5 @@ extern Node *code[100];
 void codegen_visit(Node *node);
 void codegen_pop_t0();
 char *node_kind_to_str(NodeKind kind);
+
+extern LVar *locals;
