@@ -1,14 +1,31 @@
 #include "9cv.h"
 #include <stdio.h>
 
+void codegen_pop_t1() {
+  printf("  # pop t1\n");
+  printf("  lw t1, 0(sp)\n");
+  printf("  addi sp, sp, 4\n");
+}
+
+void codegen_pop_t0() {
+  printf("  # pop t0\n");
+  printf("  lw t0, 0(sp)\n");
+  printf("  addi sp, sp, 4\n");
+}
+
+void codegen_push_t0() {
+  printf("  # push t0\n");
+  printf("  sw t0, -4(sp)\n");
+  printf("  addi sp, sp, -4\n");
+}
+
 void codegen_visit(Node *node) {
   switch (node->kind) {
   case ND_NUM:
     printf("  li t0, %d\n", node->val);
 
     // push
-    printf("  sw t0, -4(sp)\n");
-    printf("  addi sp, sp, -4\n");
+    codegen_push_t0();
     return;
 
   case ND_LT:
@@ -16,18 +33,14 @@ void codegen_visit(Node *node) {
     codegen_visit(node->rhs);
 
     // pop rhs -> t1
-    printf("  lw t1, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
-
+    codegen_pop_t1();
     // pop lhs -> t0
-    printf("  lw t0, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
+    codegen_pop_t0();
 
     printf("  slt t0, t0, t1\n");
 
     // push
-    printf("  sw t0, -4(sp)\n");
-    printf("  addi sp, sp, -4\n");
+    codegen_push_t0();
     return;
 
   case ND_GE:
@@ -35,19 +48,16 @@ void codegen_visit(Node *node) {
     codegen_visit(node->rhs);
 
     // pop rhs -> t1
-    printf("  lw t1, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
+    codegen_pop_t1();
 
     // pop lhs -> t0
-    printf("  lw t0, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
+    codegen_pop_t0();
 
     printf("  slt t0, t0, t1\n");
     printf("  xori t0, t0, 1\n");
 
     // push
-    printf("  sw t0, -4(sp)\n");
-    printf("  addi sp, sp, -4\n");
+    codegen_push_t0();
     return;
 
   case ND_ADD:
@@ -58,12 +68,9 @@ void codegen_visit(Node *node) {
     codegen_visit(node->rhs);
 
     // pop rhs -> t1
-    printf("  lw t1, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
-
+    codegen_pop_t1();
     // pop lhs -> t0
-    printf("  lw t0, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
+    codegen_pop_t0();
 
     if (node->kind == ND_ADD) {
       printf("  add t0, t0, t1\n");
@@ -78,8 +85,7 @@ void codegen_visit(Node *node) {
     }
 
     // push
-    printf("  sw t0, -4(sp)\n");
-    printf("  addi sp, sp, -4\n");
+    codegen_push_t0();
     return;
 
   case ND_EQ:
@@ -88,12 +94,9 @@ void codegen_visit(Node *node) {
     codegen_visit(node->rhs);
 
     // pop rhs -> t1
-    printf("  lw t1, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
-
+    codegen_pop_t1();
     // pop lhs -> t0
-    printf("  lw t0, 0(sp)\n");
-    printf("  addi sp, sp, 4\n");
+    codegen_pop_t0();
 
     printf("  xor t0, t0, t1\n");
     if (node->kind == ND_EQ) {
@@ -103,8 +106,27 @@ void codegen_visit(Node *node) {
     }
 
     // push
-    printf("  sw t0, -4(sp)\n");
-    printf("  addi sp, sp, -4\n");
+    codegen_push_t0();
+    return;
+
+  case ND_LVAR:
+    printf("  lw t0, -%d(sp)\n", node->offset);
+    codegen_push_t0();
+    return;
+
+  case ND_ASSIGN:
+    if (node->lhs->kind != ND_LVAR) {
+      error("not an lvalue");
+    }
+
+    codegen_visit(node->rhs);
+
+    codegen_pop_t0();
+
+    printf("  sw t0, -%d(sp)\n", node->lhs->offset);
+
+    codegen_push_t0();
+
     return;
   }
 

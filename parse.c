@@ -1,6 +1,8 @@
 #include "9cv.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -72,7 +74,7 @@ static Token *token_consume_ident() {
 
   Token *tok = token;
   token = token->next;
-  return token;
+  return tok;
 }
 
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
@@ -168,7 +170,7 @@ static Node *parse_primary() {
   if (tok != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    node->offset = (token->str[0] - 'a' + 1) * 8;
+    node->offset = (tok->str[0] - 'a' + 1) * 8;
     return node;
   }
 
