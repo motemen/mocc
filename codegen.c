@@ -110,6 +110,7 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_LVAR:
+    printf("  # read variable '%.*s'\n", node->source_len, node->source_pos);
     printf("  lw t0, -%d(sp)\n", node->offset);
     codegen_push_t0();
     return;
@@ -123,6 +124,8 @@ void codegen_visit(Node *node) {
 
     codegen_pop_t0();
 
+    printf("  # assign to variable '%.*s'\n", node->lhs->source_len,
+           node->lhs->source_pos);
     printf("  sw t0, -%d(sp)\n", node->lhs->offset);
 
     codegen_push_t0();

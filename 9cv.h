@@ -39,6 +39,9 @@ struct Node {
   Node *rhs;
   int val;    // used when kind == ND_NUM
   int offset; // offset from stack pointer, ND_LVAR
+
+  char *source_pos; // デバッグ用
+  int source_len;   // デバッグ用
 };
 
 void error(char *fmt, ...);

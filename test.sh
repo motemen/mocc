@@ -45,5 +45,6 @@ assert 0 '123 == 321'
 assert 0 '123 != 123'
 assert 1 '123 != 321'
 assert 42 'a = 42'
+assert 0 'x'
 
 echo OK

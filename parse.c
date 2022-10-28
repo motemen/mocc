@@ -166,11 +166,14 @@ static Node *parse_primary() {
     return node;
   }
 
+  // parse_ident 相当
   Token *tok = token_consume_ident();
   if (tok != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
     node->offset = (tok->str[0] - 'a' + 1) * 8;
+    node->source_pos = tok->str;
+    node->source_len = tok->len;
     return node;
   }
 
