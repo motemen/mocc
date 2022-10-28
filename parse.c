@@ -301,7 +301,7 @@ static Node *parse_equality() {
 static Node *parse_assign() {
   Node *node = parse_equality();
   if (token_consume("=")) {
-    node = new_node(ND_ASSIGN, node, parse_equality());
+    node = new_node(ND_ASSIGN, node, parse_assign());
   }
   return node;
 }

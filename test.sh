@@ -51,5 +51,6 @@ assert 100 'a = 99; a+1;'
 assert 2 'x = 2; y = 200; z = 99; y-z*x;'
 assert 14 'a = 3; b = 5 * 6 - 8; a + b / 2;'
 assert 9 'foo = 1; bar = foo + 2; baz = bar * 3; baz;'
+assert 198 'x_1 = x_2 = 99; x_1 + x_2;'
 
 echo OK
