@@ -1,6 +1,8 @@
 typedef enum {
   TK_RESERVED,
   TK_RETURN,
+  TK_IF,
+  TK_ELSE,
   TK_IDENT,
   TK_NUM,
   TK_EOF,
@@ -11,7 +13,10 @@ typedef struct Token Token;
 struct Token {
   TokenKind kind;
   Token *next;
-  int val;
+
+  int val; // kind == TK_NUM のときだけ。数値リテラル
+
+  // ソースコード上の位置
   char *str;
   int len;
 };
@@ -42,12 +47,16 @@ typedef enum {
   ND_ASSIGN, // =
   ND_NUM,    // numbers
   ND_RETURN,
+  ND_IF,
 } NodeKind;
 
 struct Node {
   NodeKind kind;
-  Node *lhs;
-  Node *rhs;
+
+  Node *lhs; // ND_IF のときは expr
+  Node *rhs; // ND_IF のときは stmt
+  Node *else_stmt;
+
   int val;    // used when kind == ND_NUM
   LVar *lvar; // used when kind == ND_LVAR
 

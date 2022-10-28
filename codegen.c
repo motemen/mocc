@@ -144,7 +144,31 @@ void codegen_visit(Node *node) {
     printf("  ret\n");
 
     return;
+
+  case ND_IF:
+    codegen_visit(node->lhs);
+
+    codegen_pop_t0();
+
+    printf("  beqz t0, .ELSE1\n");
+
+    // if {
+    codegen_visit(node->rhs);
+    printf("j .END1\n");
+    // }
+
+    // else {
+    printf(".ELSE1:\n");
+    if (node->else_stmt) {
+      codegen_visit(node->else_stmt);
+    }
+    // }
+
+    printf(".END1:\n");
+
+    return;
   }
 
-  error("codegen not implemented: %s", node_kind_to_str(node->kind));
+  error_at(node->source_pos, "codegen not implemented: %s",
+           node_kind_to_str(node->kind));
 }

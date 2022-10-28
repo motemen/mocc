@@ -53,5 +53,8 @@ assert 14 'a = 3; b = 5 * 6 - 8; a + b / 2;'
 assert 9 'foo = 1; bar = foo + 2; baz = bar * 3; baz;'
 assert 198 'x_1 = x_2 = 99; x_1 + x_2;'
 assert 5 'a = 1; b = a * 2; return b + 3; 999;'
+assert 0 'if (0) return 1; return 0;'
+assert 1 'if (1) return 1; return 0;'
+assert 2 'if (0) return 1; else return 2; return 0;'
 
 echo OK

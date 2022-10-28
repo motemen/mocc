@@ -35,6 +35,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_ASSIGN";
   case ND_RETURN:
     return "ND_RETURN";
+  case ND_IF:
+    return "ND_IF";
   }
 
   return "(unknown)";
@@ -138,6 +140,18 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "if", 2) == 0 && !isident(p[2])) {
+      cur = new_token(TK_IF, cur, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (strncmp(p, "else", 4) == 0 && !isident(p[4])) {
+      cur = new_token(TK_ELSE, cur, p, 4);
+      p += 4;
+      continue;
+    }
+
     if (('a' <= *p && *p <= 'z') || *p == '_') {
       int n = 1;
       while (*(p + n) && isident(*(p + n))) {
@@ -215,9 +229,11 @@ LVar *find_or_add_lvar(char *name, int len) {
 
 ///// Parser /////
 
-// syntax:
+// Syntax:
 //    program     = stmt*
-//    stmt        = expr ";" | "return" expr ";"
+//    stmt        = expr ";"
+//                | "return" expr ";"
+//                | "if" "(" expr ")" stmt ("else" stmt)?
 //    expr        = assign
 //    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -337,6 +353,27 @@ Node *parse_stmt() {
     node->source_len = token->len;
     node->lhs = parse_expr();
     token_expect(";");
+    return node;
+  }
+
+  if (token_consume(TK_IF)) {
+    token_expect("(");
+    Node *expr = parse_expr();
+    token_expect(")");
+    Node *stmt = parse_stmt();
+
+    Node *else_stmt = NULL;
+    if (token_consume(TK_ELSE)) {
+      else_stmt = parse_stmt();
+    }
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_IF;
+    node->lhs = expr;
+    node->rhs = stmt;
+    node->else_stmt = else_stmt;
+    node->source_pos = expr->source_pos;
+    node->source_len = expr->source_len; // ではないのだが FIXME
     return node;
   }
 
