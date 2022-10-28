@@ -64,8 +64,9 @@ struct Node {
   Node *lhs; // ND_IF, ND_WHILE のときは expr
   Node *rhs; // ND_IF, ND_WHILE のときは stmt
   Node *node3; // ND_IF のときは else, ND_FOR のときは i++ みたいなとこ
-  Node *node4;            // ND_FOR のときのみ stmt
-  struct NodeList *nodes; // ND_BLOCK のときのみ stmt, ...
+  Node *node4; // ND_FOR のときのみ stmt
+  struct NodeList
+      *nodes; // ND_BLOCK のとき: stmt, ... ND_CALL のとき: args = expr, ...
 
   // ND_CALL のときだけ。関数名
   char *name;

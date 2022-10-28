@@ -137,7 +137,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>=;{}", *p)) {
+    if (strchr("+-*/()<>=;{},", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -189,7 +189,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    error("cannot tokenize");
+    error("cannot tokenize: '%c'", *p);
   }
 
   new_token(TK_EOF, cur, p, 0);
@@ -279,13 +279,35 @@ static Node *parse_primary() {
   if (tok != NULL) {
     if (token_consume_reserved("(")) {
       // 関数呼び出しだった
-      token_expect(")");
+
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_CALL;
       node->name = tok->str;
       node->name_len = tok->len;
       node->source_pos = tok->str;
       node->source_len = tok->len;
+
+      if (token_consume_reserved(")")) {
+        // 引数ナシ
+      } else {
+        NodeList head = {};
+        NodeList *cur = &head;
+        while (true) {
+          NodeList *node_item = calloc(1, sizeof(NodeList));
+          node_item->node = parse_expr();
+          cur->next = node_item;
+          cur = cur->next;
+
+          if (token_consume_reserved(")")) {
+            break;
+          }
+
+          token_expect(",");
+        }
+
+        node->nodes = head.next;
+      }
+
       return node;
     }
 
@@ -463,9 +485,8 @@ Node *parse_stmt() {
     NodeList head = {};
     NodeList *cur = &head;
     while (!token_consume_reserved("}")) {
-      Node *stmt = parse_stmt();
       NodeList *node_item = calloc(1, sizeof(NodeList));
-      node_item->node = stmt;
+      node_item->node = parse_stmt();
       cur->next = node_item;
       cur = cur->next;
     }

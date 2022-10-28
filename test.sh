@@ -65,11 +65,19 @@ assert 10 '{ a = 1; b = 2; c = 3; d = 4; return a + b + c + d; }'
 assert 55 'sum = 0; i = 1; while (i <= 10) { sum = sum + i; i = i + 1; } return sum;'
 assert 55 'for (i = 1; i <= 10; i = i + 1) { sum = sum + i; } return sum;'
 
-printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); }' | $riscv_cc -xc - -c -o foo.o || exit 1
+printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); } void foo2(int x, int y) { printf("foo2 called!! %%d %%d\\n", x, y); }' | $riscv_cc -xc - -c -o foo.o || exit 1
+
 ./9cv "foo(); 0;" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
-if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp; then
+if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo called!!!'; then
   echo "calling foo() failed"
+  exit 1
+fi
+
+./9cv "foo2(42, 990+9); 0;" > tmp.s || exit 1
+$riscv_cc -static tmp.s foo.o -o tmp
+if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 42 999'; then
+  echo "calling foo2(42, 990+9) failed"
   exit 1
 fi
 

@@ -232,14 +232,21 @@ void codegen_visit(Node *node) {
 
     return;
 
-  case ND_CALL:
-    // TODO; ra を保存
+  case ND_CALL: {
+    int arg_count = 0;
+    for (NodeList *n = node->nodes; n; n = n->next) {
+      codegen_visit(n->node);
+      codegen_pop_t0();
+      printf("  mv a%d, t0\n", arg_count++);
+    }
+
     printf("  call %.*s\n", node->name_len, node->name);
     // 結果は a0 に入っているよな
     printf("  # push a0\n");
     printf("  sw a0, -8(sp)\n");
     printf("  addi sp, sp, -8\n");
     return;
+  }
   }
 
   error_at(node->source_pos, "codegen not implemented: %s",
