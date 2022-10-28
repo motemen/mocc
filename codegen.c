@@ -133,6 +133,17 @@ void codegen_visit(Node *node) {
     codegen_push_t0();
 
     return;
+
+  case ND_RETURN:
+    codegen_visit(node->lhs);
+
+    codegen_pop_t0();
+
+    printf("  # Set return value\n");
+    printf("  mv a0, t0\n");
+    printf("  ret\n");
+
+    return;
   }
 
   error("codegen not implemented: %s", node_kind_to_str(node->kind));

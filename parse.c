@@ -33,11 +33,24 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_LVAR";
   case ND_ASSIGN:
     return "ND_ASSIGN";
+  case ND_RETURN:
+    return "ND_RETURN";
   }
+
+  return "(unknown)";
 }
 
-// Consumes a token matching op operator
-static bool token_consume(char *op) {
+static bool token_consume(TokenKind kind) {
+  if (token->kind != kind) {
+    return false;
+  }
+
+  token = token->next;
+  return true;
+}
+
+// TK_RESERVED なものがあれば進んで true、なかったら false
+static bool token_consume_reserved(char *op) {
   if (token->kind != TK_RESERVED || token->len != strlen(op) ||
       strncmp(token->str, op, token->len) != 0) {
     return false;
@@ -119,6 +132,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "return", 6) == 0 && !isident(p[6])) {
+      cur = new_token(TK_RETURN, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
     if (('a' <= *p && *p <= 'z') || *p == '_') {
       int n = 1;
       while (*(p + n) && isident(*(p + n))) {
@@ -197,6 +216,8 @@ LVar *find_or_add_lvar(char *name, int len) {
 ///// Parser /////
 
 // syntax:
+//    program     = stmt*
+//    stmt        = expr ";" | "return" expr ";"
 //    expr        = assign
 //    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -208,7 +229,7 @@ LVar *find_or_add_lvar(char *name, int len) {
 //    ident	      = /[a-z][a-z0-9]*/
 
 static Node *parse_primary() {
-  if (token_consume("(")) {
+  if (token_consume_reserved("(")) {
     Node *node = parse_expr();
     token_expect(")");
     return node;
@@ -231,11 +252,11 @@ static Node *parse_primary() {
 }
 
 static Node *parse_unary() {
-  if (token_consume("+")) {
+  if (token_consume_reserved("+")) {
     return parse_primary();
   }
 
-  if (token_consume("-")) {
+  if (token_consume_reserved("-")) {
     return new_node(ND_SUB, new_node_num(0), parse_primary());
   }
 
@@ -245,9 +266,9 @@ static Node *parse_unary() {
 static Node *parse_mul() {
   Node *node = parse_unary();
   for (;;) {
-    if (token_consume("*")) {
+    if (token_consume_reserved("*")) {
       node = new_node(ND_MUL, node, parse_unary());
-    } else if (token_consume("/")) {
+    } else if (token_consume_reserved("/")) {
       node = new_node(ND_DIV, node, parse_unary());
     } else {
       return node;
@@ -258,9 +279,9 @@ static Node *parse_mul() {
 static Node *parse_add() {
   Node *node = parse_mul();
   for (;;) {
-    if (token_consume("+")) {
+    if (token_consume_reserved("+")) {
       node = new_node(ND_ADD, node, parse_mul());
-    } else if (token_consume("-")) {
+    } else if (token_consume_reserved("-")) {
       node = new_node(ND_SUB, node, parse_mul());
     } else {
       return node;
@@ -271,13 +292,13 @@ static Node *parse_add() {
 static Node *parse_relational() {
   Node *node = parse_add();
   for (;;) {
-    if (token_consume("<")) {
+    if (token_consume_reserved("<")) {
       node = new_node(ND_LT, node, parse_add());
-    } else if (token_consume(">")) {
+    } else if (token_consume_reserved(">")) {
       node = new_node(ND_LT, parse_add(), node);
-    } else if (token_consume("<=")) {
+    } else if (token_consume_reserved("<=")) {
       node = new_node(ND_GE, parse_add(), node);
-    } else if (token_consume(">=")) {
+    } else if (token_consume_reserved(">=")) {
       node = new_node(ND_GE, node, parse_add());
     } else {
       return node;
@@ -288,9 +309,9 @@ static Node *parse_relational() {
 static Node *parse_equality() {
   Node *node = parse_relational();
   for (;;) {
-    if (token_consume("==")) {
+    if (token_consume_reserved("==")) {
       node = new_node(ND_EQ, node, parse_relational());
-    } else if (token_consume("!=")) {
+    } else if (token_consume_reserved("!=")) {
       node = new_node(ND_NE, node, parse_relational());
     } else {
       return node;
@@ -300,7 +321,7 @@ static Node *parse_equality() {
 
 static Node *parse_assign() {
   Node *node = parse_equality();
-  if (token_consume("=")) {
+  if (token_consume_reserved("=")) {
     node = new_node(ND_ASSIGN, node, parse_assign());
   }
   return node;
@@ -309,6 +330,16 @@ static Node *parse_assign() {
 Node *parse_expr() { return parse_assign(); }
 
 Node *parse_stmt() {
+  if (token_consume(TK_RETURN)) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_RETURN;
+    node->source_pos = token->str;
+    node->source_len = token->len;
+    node->lhs = parse_expr();
+    token_expect(";");
+    return node;
+  }
+
   Node *node = parse_expr();
   token_expect(";");
   return node;
