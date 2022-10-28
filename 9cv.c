@@ -48,7 +48,13 @@ int main(int argc, char **argv) {
   printf("main:\n");
 
   // Prologue
-  int num_locals = 26;
+  int num_locals = 0;
+  LVar *l = locals;
+  while (l) {
+    num_locals++;
+    l = l->next;
+  }
+
   printf("  # Prologue\n");
   printf("  sd fp, -8(sp)\n"); // fp を保存
   printf("  addi fp, sp, -8\n");

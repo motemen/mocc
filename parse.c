@@ -221,7 +221,7 @@ LVar *find_lvar(char *name, int len) {
 
 LVar *find_or_add_lvar(char *name, int len) {
   LVar *last_var = locals;
-  int i;
+  int i = 0;
   for (LVar *var = locals; var; last_var = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
       return var;
