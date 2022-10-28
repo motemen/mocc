@@ -138,6 +138,7 @@ static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
+  node->source_pos = token->str; // ホントは一個前のトークンの位置を入れたい
   return node;
 }
 
@@ -145,6 +146,7 @@ static Node *new_node_num(int val) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_NUM;
   node->val = val;
+  node->source_pos = token->str;
   return node;
 }
 

@@ -117,7 +117,8 @@ void codegen_visit(Node *node) {
 
   case ND_ASSIGN:
     if (node->lhs->kind != ND_LVAR) {
-      error("not an lvalue");
+      error_at(node->lhs->source_pos, "not an lvalue: %s",
+               node_kind_to_str(node->lhs->kind));
     }
 
     codegen_visit(node->rhs);

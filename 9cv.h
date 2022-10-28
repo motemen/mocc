@@ -45,6 +45,7 @@ struct Node {
 };
 
 void error(char *fmt, ...);
+void error_at(char *loc, char *fmt, ...);
 
 Token *tokenize(char *p);
 Node *parse_expr();
