@@ -53,6 +53,7 @@ typedef enum {
   ND_WHILE,
   ND_FOR,
   ND_BLOCK,
+  ND_CALL,
 } NodeKind;
 
 struct NodeList;
@@ -65,6 +66,10 @@ struct Node {
   Node *node3; // ND_IF のときは else, ND_FOR のときは i++ みたいなとこ
   Node *node4;            // ND_FOR のときのみ stmt
   struct NodeList *nodes; // ND_BLOCK のときのみ stmt, ...
+
+  // ND_CALL のときだけ。関数名
+  char *name;
+  int name_len;
 
   int val;    // used when kind == ND_NUM
   LVar *lvar; // used when kind == ND_LVAR

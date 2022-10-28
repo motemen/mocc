@@ -1,5 +1,7 @@
 #!/bin/bash
 
+riscv_cc=riscv64-$RISCV_HOST-gcc
+
 assert() {
   expected="$1"
   input="$2"
@@ -7,7 +9,7 @@ assert() {
   echo "# input: $input" >&2
 
   ./9cv "$input" > tmp.s || exit 1
-  riscv64-$RISCV_HOST-gcc -static -o tmp tmp.s || exit 1
+  $riscv_cc -static -o tmp tmp.s || exit 1
 
   spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp
   actual="$?"
@@ -62,5 +64,13 @@ assert 8 'a = 0; for (; a < 8; ) a = a + 1; return a;'
 assert 10 '{ a = 1; b = 2; c = 3; d = 4; return a + b + c + d; }'
 assert 55 'sum = 0; i = 1; while (i <= 10) { sum = sum + i; i = i + 1; } return sum;'
 assert 55 'for (i = 1; i <= 10; i = i + 1) { sum = sum + i; } return sum;'
+
+printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); }' | $riscv_cc -xc - -c -o foo.o || exit 1
+./9cv "foo(); 0;" > tmp.s || exit 1
+$riscv_cc -static tmp.s foo.o -o tmp
+if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp; then
+  echo "calling foo() failed"
+  exit 1
+fi
 
 echo OK

@@ -43,6 +43,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_FOR";
   case ND_BLOCK:
     return "ND_BLOCK";
+  case ND_CALL:
+    return "ND_CALL";
   }
 
   return "(unknown)";
@@ -262,7 +264,7 @@ LVar *find_or_add_lvar(char *name, int len) {
 //    add         = mul ("+" mul | "-" mul)*
 //    mul         = unary ("*" unary | "/" unary)*
 //    unary       = ("+" | "-")? primary
-//    primary     = num | ident | "(" expr ")"
+//    primary     = num | ident ("(" ")")? | "(" expr ")"
 //    ident	      = /[a-z][a-z0-9]*/
 
 static Node *parse_primary() {
@@ -275,6 +277,18 @@ static Node *parse_primary() {
   // parse_ident 相当
   Token *tok = token_consume_ident();
   if (tok != NULL) {
+    if (token_consume_reserved("(")) {
+      // 関数呼び出しだった
+      token_expect(")");
+      Node *node = calloc(1, sizeof(Node));
+      node->kind = ND_CALL;
+      node->name = tok->str;
+      node->name_len = tok->len;
+      node->source_pos = tok->str;
+      node->source_len = tok->len;
+      return node;
+    }
+
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
     LVar *lvar = find_or_add_lvar(tok->str, tok->len);
