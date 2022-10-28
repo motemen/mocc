@@ -49,5 +49,8 @@ void error_at(char *loc, char *fmt, ...);
 
 Token *tokenize(char *p);
 Node *parse_expr();
+void parse_program();
+extern Node *code[100];
 void codegen_visit(Node *node);
+void codegen_pop_t0();
 char *node_kind_to_str(NodeKind kind);

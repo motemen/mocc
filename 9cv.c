@@ -37,7 +37,8 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   token = tokenize(user_input);
-  Node *node = parse_expr();
+
+  parse_program();
 
   if (token != NULL && token->kind != TK_EOF) {
     error("not all tokens are consumed");
@@ -46,12 +47,28 @@ int main(int argc, char **argv) {
   printf(".global main\n");
   printf("main:\n");
 
-  codegen_visit(node);
+  // Prologue
+  int num_locals = 26;
+  printf("  # Prologue\n");
+  printf("  sd fp, -8(sp)\n"); // fp を保存
+  printf("  addi fp, sp, -8\n");
+  // スタックポインタを移動。関数を抜けるまで動かない
+  printf("  addi sp, sp, -%d\n", 8 * num_locals + 8 /* for saved fp */);
 
-  // pop -> t0
-  printf("  lw t0, 0(sp)\n");
-  printf("  addi sp, sp, 4\n");
+  for (int i = 0; code[i]; i++) {
+    codegen_visit(code[i]);
+    codegen_pop_t0();
+  }
 
+  // Epilogue
+
+  printf("  # Epilogue\n");
+  // sp を戻す
+  printf("  addi sp, sp, %d\n", 8 * num_locals + 8);
+  // fp も戻す
+  printf("  ld fp, -8(sp)\n");
+
+  printf("  # Set return value\n");
   printf("  mv a0, t0\n");
   printf("  ret\n");
   return 0;

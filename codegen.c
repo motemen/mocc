@@ -1,22 +1,23 @@
 #include "9cv.h"
 #include <stdio.h>
 
-void codegen_pop_t1() {
-  printf("  # pop t1\n");
-  printf("  lw t1, 0(sp)\n");
-  printf("  addi sp, sp, 4\n");
-}
-
+// これ addi 4 にしたら死んだ
 void codegen_pop_t0() {
   printf("  # pop t0\n");
   printf("  lw t0, 0(sp)\n");
-  printf("  addi sp, sp, 4\n");
+  printf("  addi sp, sp, 8\n");
+}
+
+void codegen_pop_t1() {
+  printf("  # pop t1\n");
+  printf("  lw t1, 0(sp)\n");
+  printf("  addi sp, sp, 8\n");
 }
 
 void codegen_push_t0() {
   printf("  # push t0\n");
-  printf("  sw t0, -4(sp)\n");
-  printf("  addi sp, sp, -4\n");
+  printf("  sw t0, -8(sp)\n");
+  printf("  addi sp, sp, -8\n");
 }
 
 void codegen_visit(Node *node) {
@@ -111,7 +112,7 @@ void codegen_visit(Node *node) {
 
   case ND_LVAR:
     printf("  # read variable '%.*s'\n", node->source_len, node->source_pos);
-    printf("  lw t0, -%d(sp)\n", node->offset);
+    printf("  lw t0, -%d(fp)\n", node->offset);
     codegen_push_t0();
     return;
 
@@ -127,7 +128,7 @@ void codegen_visit(Node *node) {
 
     printf("  # assign to variable '%.*s'\n", node->lhs->source_len,
            node->lhs->source_pos);
-    printf("  sw t0, -%d(sp)\n", node->lhs->offset);
+    printf("  sw t0, -%d(fp)\n", node->lhs->offset);
 
     codegen_push_t0();
 

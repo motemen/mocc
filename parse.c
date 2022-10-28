@@ -51,7 +51,7 @@ bool token_at_eof() { return token->kind == TK_EOF; }
 static void token_expect(char *op) {
   if (token->kind != TK_RESERVED || token->len != strlen(op) ||
       strncmp(token->str, op, token->len) != 0) {
-    error("not '%c'", op);
+    error("token_expect: not '%c'", *op);
   }
 
   token = token->next;
@@ -111,7 +111,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>=", *p)) {
+    if (strchr("+-*/()<>=;", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
