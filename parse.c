@@ -45,6 +45,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_BLOCK";
   case ND_CALL:
     return "ND_CALL";
+  case ND_FUNCDECL:
+    return "ND_FUNCDECL";
   }
 
   return "(unknown)";
@@ -251,6 +253,7 @@ LVar *find_or_add_lvar(char *name, int len) {
 
 // Syntax:
 //    program     = stmt*
+//    funcdecl    = ident "(" ")" "{" stmt* "}"
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
@@ -511,12 +514,37 @@ Node *parse_stmt() {
   return node;
 }
 
+Node *parse_funcdecl() {
+  Token *ident = token_consume_ident();
+  if (!ident) {
+    error("expected ident");
+  }
+
+  token_expect("(");
+  token_expect(")");
+
+  Node *block = parse_block();
+  if (!block) {
+    error("expected block");
+  }
+
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_FUNCDECL;
+  node->nodes = block->nodes;
+  node->name = ident->str;
+  node->name_len = ident->len;
+  node->source_pos = ident->str;
+  node->source_len = ident->len;
+
+  return node;
+}
+
 Node *code[100];
 
 void parse_program() {
   int i = 0;
   while (!token_at_eof()) {
-    code[i++] = parse_stmt();
+    code[i++] = parse_funcdecl();
   }
   code[i] = NULL;
 }

@@ -8,7 +8,7 @@ assert() {
 
   echo "# input: $input" >&2
 
-  ./9cv "$input" > tmp.s || exit 1
+  ./9cv "main() { $input }" > tmp.s || exit 1
   $riscv_cc -static -o tmp tmp.s || exit 1
 
   spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp
@@ -69,21 +69,21 @@ assert 2 'if (0) { a = 1; return a; } else { b = 2; return b; }';
 
 printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); } void foo2(int x, int y) { printf("foo2 called!! %%d %%d\\n", x, y); }' | $riscv_cc -xc - -c -o foo.o || exit 1
 
-./9cv "foo(); 0;" > tmp.s || exit 1
+./9cv "main () { foo(); 0; }" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
 if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo called!!!'; then
   echo "calling foo() failed"
   exit 1
 fi
 
-./9cv "foo2(42, 990+9); 0;" > tmp.s || exit 1
+./9cv "main() { foo2(42, 990+9); 0; }" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
 if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 42 999'; then
   echo "calling foo2(42, 990+9) failed"
   exit 1
 fi
 
-./9cv "a = 9; foo2(a, a*a); 0;" > tmp.s || exit 1
+./9cv "main () { a = 9; foo2(a, a*a); 0; }" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
 if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 9 81'; then
   echo "calling foo2 failed"

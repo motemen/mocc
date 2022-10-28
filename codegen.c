@@ -31,6 +31,46 @@ void codegen_push_dummy() {
   printf("  addi sp, sp, -8\n");
 }
 
+// TODO: ローカル変数をなんとかしないといけないのだが…
+void codegen_prologue() {
+  int num_locals = 0;
+  LVar *l = locals;
+  while (l) {
+    num_locals++;
+    l = l->next;
+  }
+
+  printf("  # Prologue\n");
+  printf("  sd ra, 0(sp)\n");  // ra を保存
+  printf("  sd fp, -8(sp)\n"); // fp を保存
+  printf("  addi fp, sp, -8\n");
+  // スタックポインタを移動。関数を抜けるまで動かない
+  printf("  addi sp, sp, -%d\n", 8 * num_locals + 8 /* for saved fp */);
+  printf("\n");
+}
+
+void codegen_epilogue() {
+  int num_locals = 0;
+  LVar *l = locals;
+  while (l) {
+    num_locals++;
+    l = l->next;
+  }
+
+  printf("\n");
+  printf("  # Epilogue\n");
+  // sp を戻す
+  printf("  addi sp, sp, %d\n", 8 * num_locals + 8);
+  // fp も戻す
+  printf("  ld fp, -8(sp)\n");
+  // ra も戻す
+  printf("  ld ra, 0(sp)\n");
+
+  printf("  # Set return value\n");
+  printf("  mv a0, t0\n");
+  printf("  ret\n");
+}
+
 int label_index = 0;
 
 void codegen_visit(Node *node) {
@@ -247,6 +287,16 @@ void codegen_visit(Node *node) {
     printf("  addi sp, sp, -8\n");
     return;
   }
+
+  case ND_FUNCDECL:
+    printf("%.*s:\n", node->name_len, node->name);
+    codegen_prologue();
+    for (NodeList *n = node->nodes; n; n = n->next) {
+      codegen_visit(n->node);
+      codegen_pop_t0();
+    }
+    codegen_epilogue();
+    return;
   }
 
   error_at(node->source_pos, "codegen not implemented: %s",
