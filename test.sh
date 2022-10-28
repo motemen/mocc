@@ -74,6 +74,9 @@ assert 2 'if (0) { a = 1; return a; } else { b = 2; return b; }'
 assert_program 3 'foo() { return 1; } main() { return 2+foo(); }'
 assert_program 8 'double(x) { return x*2; } main() { return 2+double(3); }'
 assert_program 100 'add(x,y) { return x+y; } main() { return add(1, 99); }'
+assert_program 0 'add(x,y) { return x+y; } main() { x = 0; return x; }'
+assert_program 1 'inc(x) { return 0; } main() { x = inc(x); return x; }'
+assert_program 0 'add(x,y) { return x+y; } main() { x = 0; y = add(1, 99); return x; }'
 
 printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); } void foo2(int x, int y) { printf("foo2 called!! %%d %%d\\n", x, y); }' | $riscv_cc -xc - -c -o foo.o || exit 1
 
