@@ -264,7 +264,7 @@ LVar *find_or_add_lvar(char *name, int len) {
 //    add         = mul ("+" mul | "-" mul)*
 //    mul         = unary ("*" unary | "/" unary)*
 //    unary       = ("+" | "-")? primary
-//    primary     = num | ident ("(" ")")? | "(" expr ")"
+//    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
 //    ident	      = /[a-z][a-z0-9]*/
 
 static Node *parse_primary() {
@@ -402,6 +402,31 @@ static Node *parse_assign() {
 
 Node *parse_expr() { return parse_assign(); }
 
+Node *parse_stmt();
+
+Node *parse_block() {
+  if (token_consume_reserved("{")) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BLOCK;
+    node->source_pos = token->str;
+    node->source_len = token->len;
+
+    NodeList head = {};
+    NodeList *cur = &head;
+    while (!token_consume_reserved("}")) {
+      NodeList *node_item = calloc(1, sizeof(NodeList));
+      node_item->node = parse_stmt();
+      cur->next = node_item;
+      cur = cur->next;
+    }
+
+    node->nodes = head.next;
+    return node;
+  }
+
+  return NULL;
+}
+
 Node *parse_stmt() {
   if (token_consume(TK_RETURN)) {
     Node *node = calloc(1, sizeof(Node));
@@ -476,23 +501,9 @@ Node *parse_stmt() {
     return node;
   }
 
-  if (token_consume_reserved("{")) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_BLOCK;
-    node->source_pos = token->str;
-    node->source_len = token->len;
-
-    NodeList head = {};
-    NodeList *cur = &head;
-    while (!token_consume_reserved("}")) {
-      NodeList *node_item = calloc(1, sizeof(NodeList));
-      node_item->node = parse_stmt();
-      cur->next = node_item;
-      cur = cur->next;
-    }
-
-    node->nodes = head.next;
-    return node;
+  Node *block = parse_block();
+  if (block) {
+    return block;
   }
 
   Node *node = parse_expr();
