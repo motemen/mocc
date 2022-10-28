@@ -41,8 +41,8 @@ void codegen_prologue() {
   }
 
   printf("  # Prologue\n");
-  printf("  sd ra, 0(sp)\n");  // ra を保存
-  printf("  sd fp, -8(sp)\n"); // fp を保存
+  printf("  sw ra, 0(sp)\n");  // ra を保存
+  printf("  sw fp, -8(sp)\n"); // fp を保存
   printf("  addi fp, sp, -8\n");
   // スタックポインタを移動。関数を抜けるまで動かない
   printf("  addi sp, sp, -%d\n", 8 * num_locals + 8 /* for saved fp */);
@@ -66,8 +66,10 @@ void codegen_epilogue() {
   // ra も戻す
   printf("  ld ra, 0(sp)\n");
 
+  // これは ND_RETURN のときだけにすべき!!!
   printf("  # Set return value\n");
   printf("  mv a0, t0\n");
+
   printf("  ret\n");
 }
 
@@ -78,6 +80,7 @@ void codegen_visit(Node *node) {
 
   switch (node->kind) {
   case ND_NUM:
+    printf("  # constant '%d'\n", node->val);
     printf("  li t0, %d\n", node->val);
 
     // push
@@ -175,17 +178,19 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_RETURN:
+    printf("  # ND_RETURN LHS {\n");
     codegen_visit(node->lhs);
+    printf("  # ND_RETURN LHS }\n");
     codegen_pop_t0();
 
-    printf("  # Set return value\n");
-    printf("  mv a0, t0\n");
-    printf("  ret\n");
+    codegen_epilogue();
 
     return;
 
   case ND_IF:
     lindex = ++label_index;
+
+    printf("  # if {\n");
 
     codegen_visit(node->lhs);
     codegen_pop_t0();
@@ -195,7 +200,7 @@ void codegen_visit(Node *node) {
     // if {
     codegen_visit(node->rhs);
     codegen_pop_discard();
-    printf("j .Lend%03d\n", lindex);
+    printf("  j .Lend%03d\n", lindex);
     // }
 
     // else {
@@ -207,6 +212,11 @@ void codegen_visit(Node *node) {
     // }
 
     printf(".Lend%03d:\n", lindex);
+
+    codegen_push_dummy();
+
+    printf("  # if }\n");
+    printf("\n");
 
     return;
 
@@ -226,6 +236,8 @@ void codegen_visit(Node *node) {
     printf("  j .Lbegin%03d\n", lindex);
 
     printf(".Lend%03d:\n", lindex);
+
+    codegen_push_dummy();
 
     return;
 
@@ -260,6 +272,8 @@ void codegen_visit(Node *node) {
 
     printf(".Lend%03d:\n", lindex);
 
+    codegen_push_dummy();
+
     return;
 
   case ND_BLOCK:
@@ -280,7 +294,11 @@ void codegen_visit(Node *node) {
       printf("  mv a%d, t0\n", arg_count++);
     }
 
+    // これいるか？？ sp はどういう状態で引き渡せばいいんだ
+    printf("  addi sp, sp, -8\n");
     printf("  call %.*s\n", node->name_len, node->name);
+    printf("  addi sp, sp, 8\n");
+
     // 結果は a0 に入っているよな
     printf("  # push a0\n");
     printf("  sw a0, -8(sp)\n");
