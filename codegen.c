@@ -5,13 +5,13 @@
 // これ addi 4 にしたら死んだ
 void codegen_pop_t0() {
   printf("  # pop t0\n");
-  printf("  lw t0, 0(sp)\n");
+  printf("  ld t0, 0(sp)\n");
   printf("  addi sp, sp, 8\n");
 }
 
 void codegen_pop_t1() {
   printf("  # pop t1\n");
-  printf("  lw t1, 0(sp)\n");
+  printf("  ld t1, 0(sp)\n");
   printf("  addi sp, sp, 8\n");
 }
 
@@ -22,7 +22,7 @@ void codegen_pop_discard() {
 
 void codegen_push_t0() {
   printf("  # push t0\n");
-  printf("  sw t0, -8(sp)\n");
+  printf("  sd t0, -8(sp)\n");
   printf("  addi sp, sp, -8\n");
 }
 
@@ -41,8 +41,8 @@ void codegen_prologue() {
   }
 
   printf("  # Prologue\n");
-  printf("  sw ra, 0(sp)\n");  // ra を保存
-  printf("  sw fp, -8(sp)\n"); // fp を保存
+  printf("  sd ra, 0(sp)\n");  // ra を保存
+  printf("  sd fp, -8(sp)\n"); // fp を保存
   printf("  addi fp, sp, -8\n");
   // スタックポインタを移動。関数を抜けるまで動かない
   printf("  addi sp, sp, -%d\n", 8 * num_locals + 8 /* for saved fp */);
@@ -157,7 +157,7 @@ void codegen_visit(Node *node) {
 
   case ND_LVAR:
     printf("  # read variable '%.*s'\n", node->source_len, node->source_pos);
-    printf("  lw t0, -%d(fp)\n", node->lvar->offset);
+    printf("  ld t0, -%d(fp)\n", node->lvar->offset);
     codegen_push_t0();
     return;
 
@@ -172,7 +172,7 @@ void codegen_visit(Node *node) {
 
     printf("  # assign to variable '%.*s'\n", node->lhs->source_len,
            node->lhs->source_pos);
-    printf("  sw t0, -%d(fp)\n", node->lhs->lvar->offset);
+    printf("  sd t0, -%d(fp)\n", node->lhs->lvar->offset);
 
     codegen_push_t0();
     return;
@@ -301,7 +301,7 @@ void codegen_visit(Node *node) {
 
     // 結果は a0 に入っているよな
     printf("  # push a0\n");
-    printf("  sw a0, -8(sp)\n");
+    printf("  sd a0, -8(sp)\n");
     printf("  addi sp, sp, -8\n");
     return;
   }
@@ -317,7 +317,7 @@ void codegen_visit(Node *node) {
       // a0 を lvar xyz に代入するみたいなことをする
       printf("  # assign to argument '%.*s'\n", a->node->source_len,
              a->node->source_pos);
-      printf("  sw a%d, -%d(fp)\n", arg_count, a->node->lvar->offset);
+      printf("  sd a%d, -%d(fp)\n", arg_count, a->node->lvar->offset);
 
       arg_count++;
     }
