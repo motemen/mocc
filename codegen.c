@@ -56,7 +56,8 @@ static int max_lvar_offset(const char *context) {
     return 0;
   }
 
-  return last_lvar->offset + sizeof_type(last_lvar->type);
+  return last_lvar->offset +
+         (last_lvar->type->ty == ARRAY ? last_lvar->type->array_size * 8 : 8);
 }
 
 static void codegen_prologue(char *context) {
