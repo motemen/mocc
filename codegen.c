@@ -26,6 +26,7 @@ void codegen_push_t0() {
   printf("  addi sp, sp, -8\n");
 }
 
+// これの存在おかしい気がする。pop しすぎでは？
 void codegen_push_dummy() {
   printf("  # push dummy\n");
   printf("  addi sp, sp, -8\n");
@@ -356,6 +357,11 @@ void codegen_visit(Node *node) {
   case ND_ADDR:
     codegen_push_lvalue(node->lhs);
 
+    return;
+
+  case ND_VARDECL:
+    // なにもしない
+    codegen_push_dummy();
     return;
   }
 

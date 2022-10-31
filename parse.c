@@ -8,6 +8,7 @@
 
 Token *token;
 LVar *locals;
+char *context; // いまみてる関数名
 
 char *node_kind_to_str(NodeKind kind) {
   switch (kind) {
@@ -51,6 +52,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_DEREF";
   case ND_ADDR:
     return "ND_ADDR";
+  case ND_VARDECL:
+    return "ND_VARDECL";
   }
 
   return "(unknown)";
@@ -89,7 +92,7 @@ static void token_expect(char *op) {
 
 static int token_expect_number() {
   if (token->kind != TK_NUM) {
-    error("not a number");
+    error("expected number");
   }
 
   int val = token->val;
@@ -178,6 +181,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("int", p, 3) == 0 && !isident(p[3])) {
+      cur = new_token(TK_TYPE, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
     if (('a' <= *p && *p <= 'z') || *p == '_') {
       int n = 1;
       while (*(p + n) && isident(*(p + n))) {
@@ -219,23 +228,29 @@ static Node *new_node_num(int val) {
   return node;
 }
 
-LVar *find_lvar(char *name, int len) {
+LVar *find_lvar(char *context, char *name, int len) {
+  assert(context != NULL);
+
   LVar *last_var = locals;
   for (LVar *var = locals; var; last_var = var, var = var->next) {
-    if (var->len == len && !strncmp(var->name, name, len)) {
+    if (var->len == len && !strncmp(var->name, name, len) &&
+        strcmp(var->context, context) == 0) {
       return var;
     }
   }
-  return NULL;
+
+  error("variable not found: '%.*s' in %s", len, name, context);
 }
 
-// ここを関数ローカルにしないといけない!!!!!!!! どうするんだ!!!!!!!!
-LVar *find_or_add_lvar(char *name, int len) {
+LVar *add_lvar(char *context, char *name, int len) {
+  assert(context != NULL);
+
   LVar *last_var = locals;
   int i = 0;
   for (LVar *var = locals; var; last_var = var, var = var->next) {
-    if (var->len == len && !strncmp(var->name, name, len)) {
-      return var;
+    if (var->len == len && !strncmp(var->name, name, len) &&
+        strcmp(var->context, context) == 0) {
+      error("variable already defined: '%.*s'", len, name);
     }
     i++;
   }
@@ -243,6 +258,7 @@ LVar *find_or_add_lvar(char *name, int len) {
   LVar *var = calloc(1, sizeof(LVar));
   var->name = name;
   var->len = len;
+  var->context = context;
   var->offset = (i + 1) * 8;
 
   if (last_var) {
@@ -265,6 +281,8 @@ LVar *find_or_add_lvar(char *name, int len) {
 //                | "while" "(" expr ")" stmt
 //                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //                | "{" stmt* "}"
+//                | vardecl ";"
+//    vardecl     = "int" ident
 //    expr        = assign
 //    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -323,7 +341,7 @@ static Node *parse_primary() {
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_LVAR;
-    LVar *lvar = find_or_add_lvar(tok->str, tok->len);
+    LVar *lvar = find_lvar(context, tok->str, tok->len);
     node->lvar = lvar;
     node->source_pos = tok->str;
     node->source_len = tok->len;
@@ -519,6 +537,25 @@ Node *parse_stmt() {
     return node;
   }
 
+  if (token_consume(TK_TYPE)) {
+    Token *tok_var = token_consume_ident();
+    if (!tok_var) {
+      error("expected variable name");
+    }
+
+    LVar *lvar = add_lvar(context, tok_var->str, tok_var->len);
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_VARDECL;
+    node->lvar = lvar;
+    node->source_pos = tok_var->str;
+    node->source_len = tok_var->len;
+
+    token_expect(";");
+
+    return node;
+  }
+
   Node *block = parse_block();
   if (block) {
     return block;
@@ -542,6 +579,8 @@ Node *parse_funcdecl() {
   node->source_pos = ident->str;
   node->source_len = ident->len;
 
+  context = strndup(ident->str, ident->len);
+
   token_expect("(");
 
   if (token_consume_reserved(")")) {
@@ -557,7 +596,7 @@ Node *parse_funcdecl() {
 
       Node *ident = calloc(1, sizeof(Node));
       ident->kind = ND_LVAR;
-      LVar *lvar = find_or_add_lvar(tok->str, tok->len);
+      LVar *lvar = add_lvar(context, tok->str, tok->len);
       ident->lvar = lvar;
       ident->source_pos = tok->str;
       ident->source_len = tok->len;

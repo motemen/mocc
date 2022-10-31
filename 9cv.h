@@ -8,6 +8,7 @@ typedef enum {
   TK_IDENT,
   TK_NUM,
   TK_EOF,
+  TK_TYPE,
 } TokenKind;
 
 typedef struct Token Token;
@@ -30,8 +31,9 @@ typedef struct LVar LVar;
 struct LVar {
   LVar *next;
   char *name;
-  int len;
-  int offset;
+  int len;       // name の長さ
+  char *context; // この lvar が定義されている関数名
+  int offset;    // メモリ上のオフセット。fp からの位置
 };
 
 typedef struct Node Node;
@@ -55,8 +57,9 @@ typedef enum {
   ND_BLOCK,
   ND_CALL,
   ND_FUNCDECL,
-  ND_DEREF, // unary *
-  ND_ADDR,  // unary &
+  ND_DEREF,   // unary *
+  ND_ADDR,    // unary &
+  ND_VARDECL, //
 } NodeKind;
 
 struct NodeList;
@@ -94,8 +97,8 @@ typedef struct NodeList {
   struct NodeList *next;
 } NodeList;
 
-void error(char *fmt, ...);
-void error_at(char *loc, char *fmt, ...);
+_Noreturn void error(char *fmt, ...);
+_Noreturn void error_at(char *loc, char *fmt, ...);
 
 Token *tokenize(char *p);
 Node *parse_expr();

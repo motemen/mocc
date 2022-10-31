@@ -16,8 +16,30 @@ run_program() {
 assert_program_lives() {
   input="$1"
   run_program "$input"
+  # 255 は segmentation fault とかなので
   if [ "$?" -eq 255 ]; then
     echo "Program exited with 255" >&2
+    exit 1
+  fi
+}
+
+assert_compile_error() {
+  error="$1"
+  input="$2"
+
+  echo "# input: $input" >&2
+
+  error_got=$(./9cv "$input" 2>&1)
+  
+  if [ $? -ne 1 ]; then
+    echo "$input -> compile error $error expected, but unexpectedly succeeded"
+    exit 1
+  fi
+
+  if echo "$error_got" | grep "$error"; then
+    echo "$input -> compile error $error"
+  else
+    echo "$input -> compile error $error expected, but got $error_got"
     exit 1
   fi
 }
@@ -45,11 +67,19 @@ assert() {
   assert_program "$1" "main() { $2 }"
 }
 
+assert_compile_error "variable not found: 'x'" 'foo() { int x; } main() { return x; }'
+assert_program 99 'foo() { int x; x = 1; bar(); } bar() { int x; x = 2; } main() { int x; x = 99; foo(); return x; }'
+
+assert_compile_error "variable not found: 'a'" 'main() { return a; }'
+assert_compile_error "variable not found: 'a'" 'main() { a = a + 1; int a; }'
+assert_compile_error "variable already defined: 'x'" 'main() { int x; int x; }'
+assert_compile_error "variable already defined: 'num'" 'foo(num) { int num; }'
+
 assert_program 0 'main() {}'
 assert_program 0 'main() { return 0; }'
-assert_program 3 'main() { x = 3; return x; }'
-assert_program_lives 'main() { x = 3; return &x; }'
-assert_program 3 'main() { x = 3; y = &x; return *x; }'
+assert_program 3 'main() { int x; x = 3; return x; }'
+assert_program_lives 'main() { int x; x = 3; return &x; }'
+assert_program 3 'main() { int x; x = 3; int y; y = &x; return *x; }'
 
 assert_expr 0 '0;'
 assert_expr 42 '42;'
@@ -75,48 +105,47 @@ assert_expr 1 '123 == 123;'
 assert_expr 0 '123 == 321;'
 assert_expr 0 '123 != 123;'
 assert_expr 1 '123 != 321;'
-assert_expr 42 'a = 42;'
-# assert 0 'x;'
-assert 99 'a = 99; return a;'
-assert 100 'a = 99; return a+1;'
-assert 2 'x = 2; y = 200; z = 99; return y-z*x;'
-assert 14 'a = 3; b = 5 * 6 - 8; return a + b / 2;'
-assert 9 'foo = 1; bar = foo + 2; baz = bar * 3; return baz;'
-assert 198 'x_1 = x_2 = 99; return x_1 + x_2;'
-assert 5 'a = 1; b = a * 2; return b + 3; 999;'
+
+assert 42 'int a; return a = 42;'
+assert 99 'int a; a = 99; return a;'
+assert 100 'int a; a = 99; return a+1;'
+assert 2 'int x; int y; int z; x = 2; y = 200; z = 99; return y-z*x;'
+assert 14 'int a; int b; a = 3; b = 5 * 6 - 8; return a + b / 2;'
+assert 9 'int foo; int bar; int baz; foo = 1; bar = foo + 2; baz = bar * 3; return baz;'
+assert 198 'int x_1; int x_2; x_1 = x_2 = 99; return x_1 + x_2;'
+assert 5 'int a; int b; a = 1; b = a * 2; return b + 3; 999;'
 assert 0 'if (0) return 1; return 0;'
 assert 1 'if (1) return 1; return 0;'
 assert 2 'if (0) return 1; else return 2; return 0;'
-assert 6 'a = 0; while (a < 6) a = a + 1; return a;'
-assert 7 'for (a = 0; a < 7; a = a + 1) ; return a;'
-assert 8 'a = 0; for (; a < 8; ) a = a + 1; return a;'
-assert 10 '{ a = 1; b = 2; c = 3; d = 4; return a + b + c + d; }'
-assert 55 'sum = 0; i = 1; while (i <= 10) { sum = sum + i; i = i + 1; } return sum;'
-assert 55 'for (i = 1; i <= 10; i = i + 1) { sum = sum + i; } return sum;'
-assert 1 'if (1) { a = 1; return a; } else { b = 2; return b; }'
-assert 2 'if (0) { a = 1; return a; } else { b = 2; return b; }'
+assert 6 'int a; a = 0; while (a < 6) a = a + 1; return a;'
+assert 7 'int a; for (a = 0; a < 7; a = a + 1) ; return a;'
+assert 8 'int a; a = 0; for (; a < 8; ) a = a + 1; return a;'
+assert 10 '{ int a; int b; int c; int d; a = 1; b = 2; c = 3; d = 4; return a + b + c + d; }'
+assert 55 'int sum; sum = 0; int i; i = 1; while (i <= 10) { sum = sum + i; i = i + 1; } return sum;'
+assert 55 'int i; int sum; for (i = 1; i <= 10; i = i + 1) { sum = sum + i; } return sum;'
+assert 1 'int a; int b; if (1) { a = 1; return a; } else { b = 2; return b; }'
+assert 2 'int a; int b; if (0) { a = 1; return a; } else { b = 2; return b; }'
 
 assert_program 3 'foo() { return 1; } main() { return 2+foo(); }'
 assert_program 8 'double(x) { return x*2; } main() { return 2+double(3); }'
 assert_program 100 'add(x,y) { return x+y; } main() { return add(1, 99); }'
 assert_program 120 'fact(n) { if (n == 0) return 1; else return n*fact(n-1); } main() { return fact(5); }'
-assert_program 0 'f(x) { return 0; } main() { f(1); y = 2; return 0; }'
+assert_program 0 'f(x) { return 0; } main() { int y; f(1); y = 2; return 0; }'
 assert_program 8 'fib(n) { if (n <= 1) return 1; return fib(n-1) + fib(n-2); } main() { return fib(5); }'
-assert_program 0 'add(x,y) { return x+y; } main() { x = 0; return x; }'
-assert_program 43 'inc(x) { return x+1; } main() { x = 42; result = inc(x); return result; }'
-assert_program 0 'add(x,y) { return x+y; } main() { x = 0; y = add(1, 99); return x; }'
-assert_program 0 'f(x) {} main() { y = 2; return 0; }'
+assert_program 0 'add(x,y) { return x+y; } main() { int x; x = 0; return x; }'
+assert_program 43 'inc(x) { return x+1; } main() { int result; int x; x = 42; result = inc(x); return result; }'
+assert_program 0 'add(x,y) { return x+y; } main() { int x; int y; x = 0; y = add(1, 99); return x; }'
+assert_program 0 'f(x) {} main() { int y; y = 2; return 0; }'
 assert_program 0 'f(x) {} main() { f(0); return 0; }'
 assert_program 0 'f(x) {} main() { f(0); }'
-assert_program 0 'f(x) {} main() { x; y; return 0; }'
-assert_program 0 'f() {} main() { y=1; f(); return 0; }'
+assert_program 0 'f(x) {} main() { int x; int y; x; y; return 0; }'
+assert_program 0 'f() {} main() { int y; y=1; f(); return 0; }'
 assert_program 0 'f() {} main() { f(); return 0; }'
 assert_program 0 'f() {} main() { return 0; }'
-assert_program 0 'f() {} main() { y = f(); return 0; }'
-assert_program 0 'f() {} main() { f(); y; }'
-# assert_program 0 'f() {} main() { f(); }' # これの結果が48になるのもへん。return しないときには 0 を返そう
-assert_program 0 'f() {} main() { f(); y=1; return 0; }'
-assert_program 99 'foo() { x = 1; bar(); } bar() { x = 2; } main() { x = 99; foo(); return x; }'
+assert_program 0 'f() {} main() { int y; y = f(); return 0; }'
+assert_program 0 'f() {} main() { int y; f(); y; }'
+assert_program 0 'f() {} main() { f(); }'
+assert_program 0 'f() {} main() { int y; f(); y=1; return 0; }'
 
 printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); } void foo2(int x, int y) { printf("foo2 called!! %%d %%d\\n", x, y); }' | $riscv_cc -xc - -c -o foo.o || exit 1
 
@@ -134,7 +163,7 @@ if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --
   exit 1
 fi
 
-./9cv "main () { a = 9; foo2(a, a*a); 0; }" > tmp.s || exit 1
+./9cv "main () { int a; a = 9; foo2(a, a*a); 0; }" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
 if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 9 81'; then
   echo "calling foo2 failed"
