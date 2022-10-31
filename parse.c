@@ -243,7 +243,7 @@ static Type *new_type_array_of(Type *base, int size) {
   return type;
 }
 
-static Type *inspect_type(Node *node) {
+Type *inspect_type(Node *node) {
   switch (node->kind) {
   case ND_NUM:
     return &int_type;

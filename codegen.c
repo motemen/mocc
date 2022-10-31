@@ -157,8 +157,16 @@ void codegen_visit(Node *node) {
   case ND_ADD:
   case ND_SUB: {
     int ptr_size = 0;
-    if (node->lhs->kind == ND_LVAR && node->lhs->lvar->type->ty == PTR) {
-      if (node->lhs->lvar->type->ptr_to->ty == INT) {
+    Type *ltype = inspect_type(node->lhs);
+    if (ltype->ty == PTR) {
+      if (ltype->ptr_to->ty == INT) {
+        ptr_size = 4;
+      } else if (ltype->ptr_to->ty == ARRAY &&
+                 ltype->ptr_to->ptr_to->ty == INT) {
+        // TODO: とりあえずこれでうまくいってる
+        // int a[10] な型はパーズしたときに (<addr of a>)
+        // として扱われるのでこんな処理が入るわけだけど、こんなんでいいのか？
+        // 配列の配列の場合はどうなるべきかなどわかってない
         ptr_size = 4;
       } else {
         ptr_size = 8;

@@ -82,6 +82,7 @@ void parse_program();
 extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
 int sizeof_type(Type *type);
+Type *inspect_type(Node *node);
 
 extern LVar *locals;
 
