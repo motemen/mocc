@@ -1,33 +1,3 @@
-typedef enum {
-  TK_RESERVED, // これは TK_SYMBOL とかにしたい希ガス
-  // "return", "if", ... とかは TK_RESERVED にしてもよい
-  TK_RETURN,
-  TK_IF,
-  TK_ELSE,
-  TK_WHILE,
-  TK_FOR,
-  TK_IDENT,
-  TK_NUM,
-  TK_EOF,
-  TK_TYPE,
-  TK_SIZEOF,
-} TokenKind;
-
-typedef struct Token Token;
-
-struct Token {
-  TokenKind kind;
-  Token *next;
-
-  int val; // kind == TK_NUM のときだけ。数値リテラル
-
-  // ソースコード上の位置
-  char *str;
-  int len;
-};
-
-extern Token *token;
-
 typedef struct Type {
   enum { INT, PTR } ty;
   struct Type *ptr_to;
@@ -105,15 +75,13 @@ typedef struct NodeList {
   struct NodeList *next;
 } NodeList;
 
-_Noreturn void error(char *fmt, ...);
-_Noreturn void error_at(char *loc, char *fmt, ...);
-
-Token *tokenize(char *p);
 Node *parse_expr();
 void parse_program();
 extern Node *code[100];
 void codegen_visit(Node *node);
 void codegen_pop_t0();
 char *node_kind_to_str(NodeKind kind);
+
+extern char *user_input;
 
 extern LVar *locals;

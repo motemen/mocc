@@ -1,4 +1,5 @@
 #include "9cv.h"
+#include "util.h"
 #include <assert.h>
 #include <stdio.h>
 
