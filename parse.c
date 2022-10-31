@@ -103,8 +103,8 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
       error("variable already defined: '%.*s'", len, name);
     }
     if (strcmp(var->context, context) == 0) {
-      if (type->ty == ARRAY) {
-        offset += 8 * type->array_size;
+      if (var->type->ty == ARRAY) {
+        offset += 8 * var->type->array_size;
       } else {
         offset += 8;
       }

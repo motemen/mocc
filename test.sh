@@ -67,6 +67,52 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 1 'int main() {
+int a[2];
+*a = 1;
+return *a;
+}'
+
+assert_program 2 'int main() {
+int a[2];
+*a = 1;
+*(a + 1) = 2;
+return *(a + 1);
+}'
+
+assert_program 3 'int main() {
+int a[2];
+*a = 1;
+*(a + 1) = 2;
+return *a + *(a + 1);
+}'
+
+assert_program 1 'int main() {
+int x;
+x = 1;
+int *p;
+p = &x;
+return *p;
+}'
+
+assert_program 99 'int main() {
+int a[1];
+*a = 99;
+int *p;
+p = a;
+return *p;
+}'
+
+# assert_program 3 'int main() {
+# int a[2];
+# *a = 1;
+# *(a + 1) = 2;
+# int *p;
+# p = a;
+# return *p + *(p + 1);
+# }
+# '
+
 assert_program 98 'int foo() {} int main() { int x; x = 98; foo(); return x; }'
 
 assert_program 1 'int main() {
