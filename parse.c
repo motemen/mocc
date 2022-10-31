@@ -1,3 +1,4 @@
+#include "parse.h"
 #include "9cv.h"
 #include "tokenize.h"
 #include "util.h"

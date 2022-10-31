@@ -1,4 +1,5 @@
 #include "9cv.h"
+#include "codegen.h"
 #include "tokenize.h"
 #include "util.h"
 #include <stdarg.h>

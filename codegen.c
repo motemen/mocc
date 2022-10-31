@@ -1,3 +1,4 @@
+#include "codegen.h"
 #include "9cv.h"
 #include "util.h"
 #include <assert.h>
