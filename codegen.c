@@ -2,6 +2,11 @@
 #include <assert.h>
 #include <stdio.h>
 
+// ターゲットの ISA は RISCV64GC ということにする
+// https://riscv.org/wp-content/uploads/2015/01/riscv-calling.pdf
+// int のサイズは 4 bytes
+// void * のサイズは 8 bytes
+
 // これ addi 4 にしたら死んだ
 void codegen_pop_t0() {
   printf("  # pop t0\n");
@@ -134,7 +139,40 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_ADD:
-  case ND_SUB:
+  case ND_SUB: {
+    int ptr_size = 0;
+    if (node->lhs->kind == ND_LVAR && node->lhs->lvar->type->ty == PTR) {
+      if (node->lhs->lvar->type->ptr_to->ty == INT) {
+        ptr_size = 4;
+      } else {
+        ptr_size = 8;
+      }
+    }
+
+    codegen_visit(node->lhs); // -> t0
+    codegen_visit(node->rhs); // -> t1
+
+    codegen_pop_t1();
+    if (ptr_size > 0) {
+      printf("  # do pointer arithmetic\n");
+      printf("  li t3, %d\n", ptr_size);
+      printf("  mul t1, t1, t3\n");
+    }
+
+    codegen_pop_t0();
+
+    if (node->kind == ND_ADD) {
+      printf("  add t0, t0, t1\n");
+    } else if (node->kind == ND_SUB) {
+      printf("  sub t0, t0, t1\n");
+    } else {
+      assert(0);
+    }
+
+    codegen_push_t0();
+    return;
+  }
+
   case ND_MUL:
   case ND_DIV:
     codegen_visit(node->lhs); // -> t0
@@ -143,11 +181,7 @@ void codegen_visit(Node *node) {
     codegen_pop_t1();
     codegen_pop_t0();
 
-    if (node->kind == ND_ADD) {
-      printf("  add t0, t0, t1\n");
-    } else if (node->kind == ND_SUB) {
-      printf("  sub t0, t0, t1\n");
-    } else if (node->kind == ND_MUL) {
+    if (node->kind == ND_MUL) {
       printf("  mul t0, t0, t1\n");
     } else if (node->kind == ND_DIV) {
       printf("  div t0, t0, t1\n");

@@ -67,6 +67,15 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+$riscv_cc -c test/helper.c -o test/helper.o || exit 1
+./9cv 'int main() { int *p; alloc4(&p, 1, 3, 5, 7); return *(p+2); }' > tmp.s || exit 1
+$riscv_cc -static tmp.s test/helper.o -o tmp || exit 1
+spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp
+if [ "$?" -ne 5 ]; then
+  echo "expected 5 but got $?"
+  exit 1
+fi
+
 # おかしなテストだった
 assert_program 3 'int main() { int x; x = 3; int y; y = &x; return *y; }'
 
