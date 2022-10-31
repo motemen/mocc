@@ -1,9 +1,16 @@
-typedef struct Type {
-  enum { INT, PTR } ty;
-  struct Type *ptr_to;
-} Type;
+#include <stddef.h>
 
+typedef struct Type Type;
+typedef struct NodeList NodeList;
+typedef struct Node Node;
 typedef struct LVar LVar;
+
+struct Type {
+  enum { INT, PTR, ARRAY } ty;
+  Type *ptr_to;
+
+  size_t array_size; // ty==ARRAY のときのみ
+};
 
 struct LVar {
   LVar *next;
@@ -13,8 +20,6 @@ struct LVar {
   Type *type;
   int offset; // メモリ上のオフセット。fp からの位置
 };
-
-typedef struct Node Node;
 
 typedef enum {
   ND_ADD, // +
@@ -40,8 +45,6 @@ typedef enum {
   ND_VARDECL, //
 } NodeKind;
 
-struct NodeList;
-
 struct Node {
   NodeKind kind;
 
@@ -53,11 +56,11 @@ struct Node {
   // ND_BLOCK のとき: stmt, ...
   // ND_CALL のとき: params = expr, ...
   // ND_FUNCDECL のとき: args = ident, ...
-  struct NodeList *nodes;
+  NodeList *nodes;
 
   // あとで locals とかにしたいかも？？
   // すくなくとも LVar *にしたい気がする
-  struct NodeList *args;
+  NodeList *args;
 
   // ND_CALL のときだけ。関数名
   char *name;
@@ -70,10 +73,10 @@ struct Node {
   int source_len;   // デバッグ用
 };
 
-typedef struct NodeList {
+struct NodeList {
   Node *node;
   struct NodeList *next;
-} NodeList;
+};
 
 Node *parse_expr();
 void parse_program();
@@ -81,3 +84,5 @@ extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
 
 extern LVar *locals;
+
+extern char *context;

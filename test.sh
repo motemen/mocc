@@ -76,6 +76,9 @@ if [ "$?" -ne 5 ]; then
   exit 1
 fi
 
+assert_program 1 'int main() { int x; x = 1; int a[10]; return x; }'
+assert_program 40 'int main() { int a[10]; return sizeof(a); }'
+
 assert_program 4 'int main() { int x; return sizeof(x); }'
 assert_program 8 'int main() { int *ptr; return sizeof(ptr); }'
 assert_program 8 'int main() { int x; return sizeof(&x); }'

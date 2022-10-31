@@ -3,6 +3,7 @@
 #include "util.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 // ターゲットの ISA は RISCV64GC ということにする
 // https://riscv.org/wp-content/uploads/2015/01/riscv-calling.pdf
@@ -40,26 +41,32 @@ void codegen_push_dummy() {
   printf("  addi sp, sp, -8\n");
 }
 
-// TODO: ローカル変数をなんとかしないといけないのだが…
-void codegen_prologue() {
-  int num_locals = 0;
-  LVar *l = locals;
-  while (l) {
-    num_locals++;
-    l = l->next;
+static int max_lvar_offset(const char *context) {
+  int max = 0;
+
+  for (LVar *lvar = locals; lvar; lvar = lvar->next) {
+    if (strcmp(context, lvar->context) == 0) {
+      // 常にあとのほうが offset でかいはずなのでこれでよい
+      max = lvar->offset;
+    }
   }
 
+  return max;
+}
+
+static void codegen_prologue(char *context) {
   printf("  # Prologue\n");
   printf("  sd ra, 0(sp)\n");  // ra を保存
   printf("  sd fp, -8(sp)\n"); // fp を保存
   printf("  addi fp, sp, -8\n");
   // スタックポインタを移動。関数を抜けるまで動かない
-  printf("  addi sp, sp, -%d\n", 8 * num_locals + 8 /* for saved fp */);
+  printf("  addi sp, sp, -%d\n",
+         max_lvar_offset(context) + 8 /* for saved fp */);
   printf("\n");
 }
 
 // a0 に返り値を設定してから呼ぶこと
-void codegen_epilogue() {
+static void codegen_epilogue(char *context) {
   int num_locals = 0;
   LVar *l = locals;
   while (l) {
@@ -70,7 +77,7 @@ void codegen_epilogue() {
   printf("\n");
   printf("  # Epilogue\n");
   // sp を戻す
-  printf("  addi sp, sp, %d\n", 8 * num_locals + 8);
+  printf("  addi sp, sp, %d\n", max_lvar_offset(context) + 8);
   // fp も戻す
   // ここ lw にしたらおかしくなった
   printf("  ld fp, -8(sp)\n");
@@ -245,7 +252,7 @@ void codegen_visit(Node *node) {
     codegen_pop_t0();
 
     printf("  mv a0, t0\n");
-    codegen_epilogue();
+    codegen_epilogue(context);
 
     return;
 
@@ -372,7 +379,8 @@ void codegen_visit(Node *node) {
     printf("\n");
     printf("%.*s:\n", node->name_len, node->name);
 
-    codegen_prologue();
+    context = strndup(node->name, node->name_len);
+    codegen_prologue(context);
 
     int arg_count = 0;
     for (NodeList *a = node->args; a; a = a->next) {
@@ -390,7 +398,7 @@ void codegen_visit(Node *node) {
     }
 
     printf("  mv a0, zero\n");
-    codegen_epilogue();
+    codegen_epilogue(context);
 
     return;
 

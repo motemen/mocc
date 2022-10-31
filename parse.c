@@ -96,20 +96,24 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
   assert(context != NULL);
 
   LVar *last_var = locals;
-  int i = 0;
+  int offset = 8;
   for (LVar *var = locals; var; last_var = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len) &&
         strcmp(var->context, context) == 0) {
       error("variable already defined: '%.*s'", len, name);
     }
-    i++;
+    if (type->ty == ARRAY) {
+      offset += 8 * type->array_size;
+    } else {
+      offset += 8;
+    }
   }
 
   LVar *var = calloc(1, sizeof(LVar));
   var->name = name;
   var->len = len;
   var->context = context;
-  var->offset = (i + 1) * 8;
+  var->offset = offset;
   var->type = type;
 
   if (last_var) {
@@ -135,7 +139,7 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
 //                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //                | "{" stmt* "}"
 //                | vardecl ";"
-//    vardecl     = type ident
+//    vardecl     = type ident ("[" num "]")?
 //    expr        = assign
 //    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -148,6 +152,7 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
 //                | "sizeof" unary
 //    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
 //    ident	      = /[a-z][a-z0-9]*/
+//    num         = [0-9]+
 
 static Node *parse_primary() {
   if (token_consume_reserved("(")) {
@@ -212,6 +217,14 @@ static Type *new_type_ptr_to(Type *base) {
   Type *type = calloc(1, sizeof(Type));
   type->ty = PTR;
   type->ptr_to = base;
+  return type;
+}
+
+static Type *new_type_array_of(Type *base, int size) {
+  Type *type = calloc(1, sizeof(Type));
+  type->ty = ARRAY;
+  type->ptr_to = base;
+  type->array_size = size;
   return type;
 }
 
@@ -292,6 +305,11 @@ static Node *parse_unary() {
     }
     if (type->ty == PTR) {
       return new_node_num(8);
+    }
+    if (type->ty == ARRAY) {
+      // TODO: ここは underlying type によるので
+      // sizeof_type みたいなのを作ることになるだろう
+      return new_node_num(type->array_size * 4);
     }
 
     error("sizeof: unknown type");
@@ -484,11 +502,19 @@ Node *parse_stmt() {
     return node;
   }
 
+  // parse_vardecl
   Type *type = parse_type();
   if (type) {
     Token *tok_var = token_consume_ident();
     if (!tok_var) {
       error("expected variable name");
+    }
+
+    if (token_consume_reserved("[")) {
+      int size = token_expect_number();
+      token_expect("]");
+
+      type = new_type_array_of(type, size);
     }
 
     LVar *lvar = add_lvar(context, tok_var->str, tok_var->len, type);
