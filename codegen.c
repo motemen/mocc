@@ -44,14 +44,19 @@ void codegen_push_dummy() {
 static int max_lvar_offset(const char *context) {
   int max = 0;
 
+  LVar *last_lvar = NULL;
   for (LVar *lvar = locals; lvar; lvar = lvar->next) {
     if (strcmp(context, lvar->context) == 0) {
       // 常にあとのほうが offset でかいはずなのでこれでよい
-      max = lvar->offset;
+      last_lvar = lvar;
     }
   }
 
-  return max;
+  if (!last_lvar) {
+    return 0;
+  }
+
+  return last_lvar->offset + sizeof_type(last_lvar->type);
 }
 
 static void codegen_prologue(char *context) {
@@ -100,6 +105,7 @@ void codegen_push_lvalue(Node *node) {
   }
 
   // *y -> y の値をアドレスとして push する
+  // y が配列のときは *(&y) みたいな感じであつかう
   // **z -> (*z) の値をアドレスとして push する
   if (node->kind == ND_DEREF) {
     printf("  # deref\n");

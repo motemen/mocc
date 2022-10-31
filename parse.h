@@ -78,10 +78,10 @@ struct NodeList {
   struct NodeList *next;
 };
 
-Node *parse_expr();
 void parse_program();
 extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
+int sizeof_type(Type *type);
 
 extern LVar *locals;
 

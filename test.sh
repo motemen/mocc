@@ -67,6 +67,14 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 1 'int main() {
+  int a[200];
+  *a = 1;
+  return *a;
+}'
+assert_program 1 'int main() { int x; x = 1; int a[10]; return x; }'
+assert_program 40 'int main() { int a[10]; return sizeof(a); }'
+
 $riscv_cc -c test/helper.c -o test/helper.o || exit 1
 ./9cv 'int main() { int *p; alloc4(&p, 1, 3, 5, 7); return *(p+2); }' > tmp.s || exit 1
 $riscv_cc -static tmp.s test/helper.o -o tmp || exit 1
@@ -75,9 +83,6 @@ if [ "$?" -ne 5 ]; then
   echo "expected 5 but got $?"
   exit 1
 fi
-
-assert_program 1 'int main() { int x; x = 1; int a[10]; return x; }'
-assert_program 40 'int main() { int a[10]; return sizeof(a); }'
 
 assert_program 4 'int main() { int x; return sizeof(x); }'
 assert_program 8 'int main() { int *ptr; return sizeof(ptr); }'

@@ -154,6 +154,8 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
 //    ident	      = /[a-z][a-z0-9]*/
 //    num         = [0-9]+
 
+Node *parse_expr();
+
 static Node *parse_primary() {
   if (token_consume_reserved("(")) {
     Node *node = parse_expr();
@@ -204,6 +206,15 @@ static Node *parse_primary() {
     node->lvar = lvar;
     node->source_pos = tok->str;
     node->source_len = tok->len;
+
+    if (lvar->type->ty == ARRAY) {
+      // 添字なしの配列のときは配列へのポインタを返す
+      return new_node(ND_ADDR, node, NULL);
+      // TODO: sizeof と & の場合は別の対応する
+      // TODO: 添字ありの場合はまだ実装してない
+      // と思ったけど a[3] を *(a+3) にするんなら特に対応いらんのかな
+    }
+
     return node;
   }
 
@@ -279,6 +290,17 @@ static Type *inspect_type(Node *node) {
   }
 }
 
+int sizeof_type(Type *type) {
+  switch (type->ty) {
+  case INT:
+    return 4;
+  case PTR:
+    return 8;
+  case ARRAY:
+    return type->array_size * sizeof_type(type->ptr_to);
+  }
+}
+
 static Node *parse_unary() {
   if (token_consume_reserved("+")) {
     return parse_primary();
@@ -300,19 +322,8 @@ static Node *parse_unary() {
     Node *node = parse_unary();
     // 式全体の型とかいうやつを知りたいですなあ
     Type *type = inspect_type(node);
-    if (type->ty == INT) {
-      return new_node_num(4);
-    }
-    if (type->ty == PTR) {
-      return new_node_num(8);
-    }
-    if (type->ty == ARRAY) {
-      // TODO: ここは underlying type によるので
-      // sizeof_type みたいなのを作ることになるだろう
-      return new_node_num(type->array_size * 4);
-    }
-
-    error("sizeof: unknown type");
+    int size = sizeof_type(type);
+    return new_node_num(size);
   }
 
   return parse_primary();
