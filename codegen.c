@@ -75,6 +75,18 @@ void codegen_epilogue() {
 
 int label_index = 0;
 
+// LVar である node のアドレスを push する
+void codegen_push_lvalue(Node *node) {
+  if (node->kind != ND_LVAR) {
+    error_at(node->source_pos, "not an lvalue: %s",
+             node_kind_to_str(node->kind));
+  }
+
+  printf("  # address for '%.*s'\n", node->source_len, node->source_pos);
+  printf("  addi t0, fp, -%d\n", node->lvar->offset);
+  codegen_push_t0();
+}
+
 void codegen_visit(Node *node) {
   int lindex;
 
@@ -156,23 +168,25 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_LVAR:
-    printf("  # read variable '%.*s'\n", node->source_len, node->source_pos);
-    printf("  ld t0, -%d(fp)\n", node->lvar->offset);
+    codegen_push_lvalue(node);
+    codegen_pop_t0();
+    printf("  ld t0, 0(t0)\n");
     codegen_push_t0();
     return;
 
   case ND_ASSIGN:
-    if (node->lhs->kind != ND_LVAR) {
-      error_at(node->lhs->source_pos, "not an lvalue: %s",
-               node_kind_to_str(node->lhs->kind));
-    }
-
+    // -> t0
+    codegen_push_lvalue(node->lhs);
+    // -> t1
     codegen_visit(node->rhs);
+
+    codegen_pop_t1();
     codegen_pop_t0();
 
     printf("  # assign to variable '%.*s'\n", node->lhs->source_len,
            node->lhs->source_pos);
-    printf("  sd t0, -%d(fp)\n", node->lhs->lvar->offset);
+    printf("  sd t1, 0(t0)\n");
+    printf("  mv t0, t1\n");
 
     codegen_push_t0();
     return;
