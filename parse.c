@@ -47,6 +47,10 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_CALL";
   case ND_FUNCDECL:
     return "ND_FUNCDECL";
+  case ND_DEREF:
+    return "ND_DEREF";
+  case ND_ADDR:
+    return "ND_ADDR";
   }
 
   return "(unknown)";
@@ -139,7 +143,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>=;{},", *p)) {
+    if (strchr("+-*/()<>=;{},&", *p)) {
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
     }
@@ -268,6 +272,8 @@ LVar *find_or_add_lvar(char *name, int len) {
 //    add         = mul ("+" mul | "-" mul)*
 //    mul         = unary ("*" unary | "/" unary)*
 //    unary       = ("+" | "-")? primary
+//                | "*" unary
+//                | "&" unary
 //    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
 //    ident	      = /[a-z][a-z0-9]*/
 
@@ -335,6 +341,14 @@ static Node *parse_unary() {
 
   if (token_consume_reserved("-")) {
     return new_node(ND_SUB, new_node_num(0), parse_primary());
+  }
+
+  if (token_consume_reserved("*")) {
+    return new_node(ND_DEREF, parse_unary(), NULL);
+  }
+
+  if (token_consume_reserved("&")) {
+    return new_node(ND_ADDR, parse_unary(), NULL);
   }
 
   return parse_primary();

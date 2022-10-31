@@ -62,6 +62,7 @@ void codegen_epilogue() {
   // sp を戻す
   printf("  addi sp, sp, %d\n", 8 * num_locals + 8);
   // fp も戻す
+  // ここ lw にしたらおかしくなった
   printf("  ld fp, -8(sp)\n");
   // ra も戻す
   printf("  ld ra, 0(sp)\n");
@@ -341,6 +342,19 @@ void codegen_visit(Node *node) {
       codegen_pop_t0();
     }
     codegen_epilogue();
+    return;
+
+  case ND_DEREF:
+    codegen_push_lvalue(node->lhs);
+    codegen_pop_t0();
+    printf("  ld t0, 0(t0)\n");
+    codegen_push_t0();
+
+    return;
+
+  case ND_ADDR:
+    codegen_push_lvalue(node->lhs);
+
     return;
   }
 

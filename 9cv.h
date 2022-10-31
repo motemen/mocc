@@ -55,6 +55,8 @@ typedef enum {
   ND_BLOCK,
   ND_CALL,
   ND_FUNCDECL,
+  ND_DEREF, // unary *
+  ND_ADDR,  // unary &
 } NodeKind;
 
 struct NodeList;

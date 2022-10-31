@@ -2,16 +2,31 @@
 
 riscv_cc=riscv64-$RISCV_HOST-gcc
 
-assert_program() {
-  expected="$1"
-  input="$2"
-
+run_program() {
+  input="$1"
   echo "# input: $input" >&2
 
   ./9cv "$input" > tmp.s || exit 1
   $riscv_cc -static -o tmp tmp.s || exit 1
 
   spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp
+  return "$?"
+}
+
+assert_program_lives() {
+  input="$1"
+  run_program "$input"
+  if [ "$?" -eq 255 ]; then
+    echo "Program exited with 255" >&2
+    exit 1
+  fi
+}
+
+assert_program() {
+  expected="$1"
+  input="$2"
+
+  run_program "$2"
   actual="$?"
 
   if [ "$actual" = "$expected" ]; then
@@ -25,6 +40,10 @@ assert_program() {
 assert() {
   assert_program "$1" "main() { $2 }"
 }
+
+assert_program 3 'main() { x = 3; return x; }'
+assert_program_lives 'main() { x = 3; return &x; }'
+assert_program 3 'main() { x = 3; y = &x; return *x; }'
 
 assert 0 '0;'
 assert 42 '42;'
