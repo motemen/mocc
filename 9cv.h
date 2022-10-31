@@ -10,6 +10,7 @@ typedef enum {
   TK_NUM,
   TK_EOF,
   TK_TYPE,
+  TK_SIZEOF,
 } TokenKind;
 
 typedef struct Token Token;

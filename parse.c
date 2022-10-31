@@ -191,6 +191,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("sizeof", p, 6) == 0 && !isident(p[6])) {
+      cur = new_token(TK_SIZEOF, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
     if (strncmp("int", p, 3) == 0 && !isident(p[3])) {
       cur = new_token(TK_TYPE, cur, p, 3);
       p += 3;
@@ -305,6 +311,7 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
 //    unary       = ("+" | "-")? primary
 //                | "*" unary
 //                | "&" unary
+//                | "sizeof" unary
 //    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
 //    ident	      = /[a-z][a-z0-9]*/
 
@@ -365,6 +372,66 @@ static Node *parse_primary() {
   return new_node_num(val);
 }
 
+Type int_type = {INT, NULL};
+
+static Type *new_type_ptr_to(Type *base) {
+  Type *type = calloc(1, sizeof(Type));
+  type->ty = PTR;
+  type->ptr_to = base;
+  return type;
+}
+
+static Type *inspect_type(Node *node) {
+  switch (node->kind) {
+  case ND_NUM:
+    return &int_type;
+
+  case ND_ADD:
+  case ND_SUB: {
+    Type *ltype = inspect_type(node->lhs);
+    Type *rtype = inspect_type(node->rhs);
+
+    if (ltype->ty == INT && rtype->ty == INT) {
+      return &int_type;
+    }
+    if (ltype->ty == PTR && rtype->ty == INT) {
+      return ltype;
+    }
+    if (ltype->ty == INT && rtype->ty == PTR) {
+      return rtype;
+    }
+
+    error_at(node->source_pos, "invalid or unimplemented pointer arithmetic");
+  }
+
+  case ND_MUL:
+  case ND_DIV:
+    return &int_type;
+
+  case ND_CALL:
+    // TODO: 関数の戻り値の型を返す
+    return &int_type;
+
+  case ND_LVAR:
+    return node->lvar->type;
+
+  case ND_DEREF: {
+    Type *type = inspect_type(node->lhs);
+    if (type->ty == PTR) {
+      return type->ptr_to;
+    }
+
+    error_at(node->source_pos, "invalid dereference (or not implemented)");
+  }
+
+  case ND_ADDR:
+    return new_type_ptr_to(inspect_type(node->lhs));
+
+  default:
+    error_at(node->source_pos, "sizeof: unimplemented");
+  }
+}
+
 static Node *parse_unary() {
   if (token_consume_reserved("+")) {
     return parse_primary();
@@ -380,6 +447,20 @@ static Node *parse_unary() {
 
   if (token_consume_reserved("&")) {
     return new_node(ND_ADDR, parse_unary(), NULL);
+  }
+
+  if (token_consume(TK_SIZEOF)) {
+    Node *node = parse_unary();
+    // 式全体の型とかいうやつを知りたいですなあ
+    Type *type = inspect_type(node);
+    if (type->ty == INT) {
+      return new_node_num(4);
+    }
+    if (type->ty == PTR) {
+      return new_node_num(8);
+    }
+
+    error("sizeof: unknown type");
   }
 
   return parse_primary();
