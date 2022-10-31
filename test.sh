@@ -60,26 +60,26 @@ assert_program() {
 }
 
 assert_expr() {
-  assert_program "$1" "main() { return $2 }"
+  assert_program "$1" "int main() { return $2 }"
 }
 
 assert() {
-  assert_program "$1" "main() { $2 }"
+  assert_program "$1" "int main() { $2 }"
 }
 
-assert_compile_error "variable not found: 'x'" 'foo() { int x; } main() { return x; }'
-assert_program 99 'foo() { int x; x = 1; bar(); } bar() { int x; x = 2; } main() { int x; x = 99; foo(); return x; }'
+assert_compile_error "variable not found: 'x'" 'int foo() { int x; } int main() { return x; }'
+assert_program 99 'int foo() { int x; x = 1; bar(); } int bar() { int x; x = 2; } int main() { int x; x = 99; foo(); return x; }'
 
-assert_compile_error "variable not found: 'a'" 'main() { return a; }'
-assert_compile_error "variable not found: 'a'" 'main() { a = a + 1; int a; }'
-assert_compile_error "variable already defined: 'x'" 'main() { int x; int x; }'
-assert_compile_error "variable already defined: 'num'" 'foo(num) { int num; }'
+assert_compile_error "variable not found: 'a'" 'int main() { return a; }'
+assert_compile_error "variable not found: 'a'" 'int main() { a = a + 1; int a; }'
+assert_compile_error "variable already defined: 'x'" 'int main() { int x; int x; }'
+assert_compile_error "variable already defined: 'num'" 'int foo(int num) { int num; }'
 
-assert_program 0 'main() {}'
-assert_program 0 'main() { return 0; }'
-assert_program 3 'main() { int x; x = 3; return x; }'
-assert_program_lives 'main() { int x; x = 3; return &x; }'
-assert_program 3 'main() { int x; x = 3; int y; y = &x; return *x; }'
+assert_program 0 'int main() {}'
+assert_program 0 'int main() { return 0; }'
+assert_program 3 'int main() { int x; x = 3; return x; }'
+assert_program_lives 'int main() { int x; x = 3; return &x; }'
+assert_program 3 'int main() { int x; x = 3; int y; y = &x; return *x; }'
 
 assert_expr 0 '0;'
 assert_expr 42 '42;'
@@ -126,44 +126,44 @@ assert 55 'int i; int sum; for (i = 1; i <= 10; i = i + 1) { sum = sum + i; } re
 assert 1 'int a; int b; if (1) { a = 1; return a; } else { b = 2; return b; }'
 assert 2 'int a; int b; if (0) { a = 1; return a; } else { b = 2; return b; }'
 
-assert_program 3 'foo() { return 1; } main() { return 2+foo(); }'
-assert_program 8 'double(x) { return x*2; } main() { return 2+double(3); }'
-assert_program 100 'add(x,y) { return x+y; } main() { return add(1, 99); }'
-assert_program 120 'fact(n) { if (n == 0) return 1; else return n*fact(n-1); } main() { return fact(5); }'
-assert_program 0 'f(x) { return 0; } main() { int y; f(1); y = 2; return 0; }'
-assert_program 8 'fib(n) { if (n <= 1) return 1; return fib(n-1) + fib(n-2); } main() { return fib(5); }'
-assert_program 0 'add(x,y) { return x+y; } main() { int x; x = 0; return x; }'
-assert_program 43 'inc(x) { return x+1; } main() { int result; int x; x = 42; result = inc(x); return result; }'
-assert_program 0 'add(x,y) { return x+y; } main() { int x; int y; x = 0; y = add(1, 99); return x; }'
-assert_program 0 'f(x) {} main() { int y; y = 2; return 0; }'
-assert_program 0 'f(x) {} main() { f(0); return 0; }'
-assert_program 0 'f(x) {} main() { f(0); }'
-assert_program 0 'f(x) {} main() { int x; int y; x; y; return 0; }'
-assert_program 0 'f() {} main() { int y; y=1; f(); return 0; }'
-assert_program 0 'f() {} main() { f(); return 0; }'
-assert_program 0 'f() {} main() { return 0; }'
-assert_program 0 'f() {} main() { int y; y = f(); return 0; }'
-assert_program 0 'f() {} main() { int y; f(); y; }'
-assert_program 0 'f() {} main() { f(); }'
-assert_program 0 'f() {} main() { int y; f(); y=1; return 0; }'
+assert_program 3 'int foo() { return 1; } int main() { return 2+foo(); }'
+assert_program 8 'int double(int x) { return x*2; } int main() { return 2+double(3); }'
+assert_program 100 'int add(int x, int y) { return x+y; } int main() { return add(1, 99); }'
+assert_program 120 'int fact(int n) { if (n == 0) return 1; else return n*fact(n-1); } int main() { return fact(5); }'
+assert_program 0 'int f(int x) { return 0; } int main() { int y; f(1); y = 2; return 0; }'
+assert_program 8 'int fib(int n) { if (n <= 1) return 1; return fib(n-1) + fib(n-2); } int main() { return fib(5); }'
+assert_program 0 'int add(int x,int y) { return x+y; } int main() { int x; x = 0; return x; }'
+assert_program 43 'int inc(int x) { return x+1; } int main() { int result; int x; x = 42; result = inc(x); return result; }'
+assert_program 0 'int add(int x,int y) { return x+y; } int main() { int x; int y; x = 0; y = add(1, 99); return x; }'
+assert_program 0 'int f(int x) {} int main() { int y; y = 2; return 0; }'
+assert_program 0 'int f(int x) {} int main() { f(0); return 0; }'
+assert_program 0 'int f(int x) {} int main() { f(0); }'
+assert_program 0 'int f(int x) {} int main() { int x; int y; x; y; return 0; }'
+assert_program 0 'int f() {} int main() { int y; y=1; f(); return 0; }'
+assert_program 0 'int f() {} int main() { f(); return 0; }'
+assert_program 0 'int f() {} int main() { return 0; }'
+assert_program 0 'int f() {} int main() { int y; y = f(); return 0; }'
+assert_program 0 'int f() {} int main() { int y; f(); y; }'
+assert_program 0 'int f() {} int main() { f(); }'
+assert_program 0 'int f() {} int main() { int y; f(); y=1; return 0; }'
 
 printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); } void foo2(int x, int y) { printf("foo2 called!! %%d %%d\\n", x, y); }' | $riscv_cc -xc - -c -o foo.o || exit 1
 
-./9cv "main () { foo(); 0; }" > tmp.s || exit 1
+./9cv "int main () { foo(); 0; }" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
 if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo called!!!'; then
   echo "calling foo() failed"
   exit 1
 fi
 
-./9cv "main() { foo2(42, 990+9); 0; }" > tmp.s || exit 1
+./9cv "int main() { foo2(42, 990+9); 0; }" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
 if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 42 999'; then
   echo "calling foo2(42, 990+9) failed"
   exit 1
 fi
 
-./9cv "main () { int a; a = 9; foo2(a, a*a); 0; }" > tmp.s || exit 1
+./9cv "int main () { int a; a = 9; foo2(a, a*a); 0; }" > tmp.s || exit 1
 $riscv_cc -static tmp.s foo.o -o tmp
 if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 9 81'; then
   echo "calling foo2 failed"

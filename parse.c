@@ -274,7 +274,8 @@ LVar *add_lvar(char *context, char *name, int len) {
 
 // Syntax:
 //    program     = funcdecl*
-//    funcdecl    = ident "(" expr ("," expr)* ")" "{" stmt* "}"
+//    funcdecl    = "int" ident "(" "int" expr ("," "int" expr)* ")"
+//                  "{" stmt* "}"
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
@@ -567,6 +568,10 @@ Node *parse_stmt() {
 }
 
 Node *parse_funcdecl() {
+  if (!token_consume(TK_TYPE)) {
+    error("TK_TYPE expected");
+  }
+
   Token *ident = token_consume_ident();
   if (!ident) {
     error("expected ident");
@@ -589,6 +594,10 @@ Node *parse_funcdecl() {
     NodeList head = {};
     NodeList *cur = &head;
     while (true) {
+      if (!token_consume(TK_TYPE)) {
+        error("TK_TYPE expected");
+      }
+
       Token *tok = token_consume_ident();
       if (!tok) {
         error("expected ident");
