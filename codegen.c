@@ -49,6 +49,7 @@ void codegen_prologue() {
   printf("\n");
 }
 
+// a0 に返り値を設定してから呼ぶこと
 void codegen_epilogue() {
   int num_locals = 0;
   LVar *l = locals;
@@ -66,10 +67,6 @@ void codegen_epilogue() {
   printf("  ld fp, -8(sp)\n");
   // ra も戻す
   printf("  ld ra, 0(sp)\n");
-
-  // これは ND_RETURN のときだけにすべき!!!
-  printf("  # Set return value\n");
-  printf("  mv a0, t0\n");
 
   printf("  ret\n");
 }
@@ -198,6 +195,7 @@ void codegen_visit(Node *node) {
     printf("  # ND_RETURN LHS }\n");
     codegen_pop_t0();
 
+    printf("  mv a0, t0\n");
     codegen_epilogue();
 
     return;
@@ -341,7 +339,10 @@ void codegen_visit(Node *node) {
       codegen_visit(n->node);
       codegen_pop_t0();
     }
+
+    printf("  mv a0, zero\n");
     codegen_epilogue();
+
     return;
 
   case ND_DEREF:
