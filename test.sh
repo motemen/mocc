@@ -67,6 +67,15 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+# おかしなテストだった
+assert_program 3 'int main() { int x; x = 3; int y; y = &x; return *y; }'
+
+assert_program 3 'int main() { int x; int *y; y = &x; *y = 3; return x; }'
+assert_program 5 'int main() { int x; int *p; p = &x; x = 5; return *p; }'
+assert_program 9 'int main() { int x; int *p; int **pp; p = &x; pp = &p; x = 9; return **pp; }'
+assert_program 11 'int main() { int x; int *p; int **pp; p = &x; pp = &p; x = 11; return *p; }'
+assert_program 7 'int main() { int x; int *p; int **pp; p = &x; pp = &p; (**pp) = 7; return x; }'
+
 assert_compile_error "variable not found: 'x'" 'int foo() { int x; } int main() { return x; }'
 assert_program 99 'int foo() { int x; x = 1; bar(); } int bar() { int x; x = 2; } int main() { int x; x = 99; foo(); return x; }'
 
@@ -79,7 +88,6 @@ assert_program 0 'int main() {}'
 assert_program 0 'int main() { return 0; }'
 assert_program 3 'int main() { int x; x = 3; return x; }'
 assert_program_lives 'int main() { int x; x = 3; return &x; }'
-assert_program 3 'int main() { int x; x = 3; int y; y = &x; return *x; }'
 
 assert_expr 0 '0;'
 assert_expr 42 '42;'

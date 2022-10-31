@@ -79,6 +79,16 @@ static bool token_consume_reserved(char *op) {
   return true;
 }
 
+static bool token_consume_type(char *type) {
+  if (token->kind != TK_TYPE || token->len != strlen(type) ||
+      strncmp(token->str, type, token->len) != 0) {
+    return false;
+  }
+
+  token = token->next;
+  return true;
+}
+
 bool token_at_eof() { return token->kind == TK_EOF; }
 
 static void token_expect(char *op) {
@@ -242,7 +252,7 @@ LVar *find_lvar(char *context, char *name, int len) {
   error("variable not found: '%.*s' in %s", len, name, context);
 }
 
-LVar *add_lvar(char *context, char *name, int len) {
+LVar *add_lvar(char *context, char *name, int len, Type *type) {
   assert(context != NULL);
 
   LVar *last_var = locals;
@@ -260,6 +270,7 @@ LVar *add_lvar(char *context, char *name, int len) {
   var->len = len;
   var->context = context;
   var->offset = (i + 1) * 8;
+  var->type = type;
 
   if (last_var) {
     last_var->next = var;
@@ -276,6 +287,7 @@ LVar *add_lvar(char *context, char *name, int len) {
 //    program     = funcdecl*
 //    funcdecl    = "int" ident "(" "int" expr ("," "int" expr)* ")"
 //                  "{" stmt* "}"
+//    type        = "int" "*"*
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
@@ -283,7 +295,7 @@ LVar *add_lvar(char *context, char *name, int len) {
 //                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //                | "{" stmt* "}"
 //                | vardecl ";"
-//    vardecl     = "int" ident
+//    vardecl     = type ident
 //    expr        = assign
 //    assign      = equality ("=" assign)?
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -464,6 +476,25 @@ Node *parse_block() {
   return NULL;
 }
 
+Type *parse_type() {
+  if (token_consume_type("int")) {
+    Type *type = calloc(1, sizeof(Type));
+    type->ty = INT;
+
+    while (token_consume_reserved("*")) {
+      Type *type_p = calloc(1, sizeof(Type));
+      type_p->ty = PTR;
+      type_p->ptr_to = type;
+
+      type = type_p;
+    }
+
+    return type;
+  }
+
+  return NULL;
+}
+
 Node *parse_stmt() {
   if (token_consume(TK_RETURN)) {
     Node *node = calloc(1, sizeof(Node));
@@ -538,13 +569,14 @@ Node *parse_stmt() {
     return node;
   }
 
-  if (token_consume(TK_TYPE)) {
+  Type *type = parse_type();
+  if (type) {
     Token *tok_var = token_consume_ident();
     if (!tok_var) {
       error("expected variable name");
     }
 
-    LVar *lvar = add_lvar(context, tok_var->str, tok_var->len);
+    LVar *lvar = add_lvar(context, tok_var->str, tok_var->len, type);
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_VARDECL;
@@ -594,8 +626,9 @@ Node *parse_funcdecl() {
     NodeList head = {};
     NodeList *cur = &head;
     while (true) {
-      if (!token_consume(TK_TYPE)) {
-        error("TK_TYPE expected");
+      Type *type = parse_type();
+      if (!type) {
+        error("type expected");
       }
 
       Token *tok = token_consume_ident();
@@ -605,7 +638,7 @@ Node *parse_funcdecl() {
 
       Node *ident = calloc(1, sizeof(Node));
       ident->kind = ND_LVAR;
-      LVar *lvar = add_lvar(context, tok->str, tok->len);
+      LVar *lvar = add_lvar(context, tok->str, tok->len, type);
       ident->lvar = lvar;
       ident->source_pos = tok->str;
       ident->source_len = tok->len;

@@ -1,5 +1,6 @@
 typedef enum {
-  TK_RESERVED,
+  TK_RESERVED, // これは TK_SYMBOL とかにしたい希ガス
+  // "return", "if", ... とかは TK_RESERVED にしてもよい
   TK_RETURN,
   TK_IF,
   TK_ELSE,
@@ -26,6 +27,11 @@ struct Token {
 
 extern Token *token;
 
+typedef struct Type {
+  enum { INT, PTR } ty;
+  struct Type *ptr_to;
+} Type;
+
 typedef struct LVar LVar;
 
 struct LVar {
@@ -33,7 +39,8 @@ struct LVar {
   char *name;
   int len;       // name の長さ
   char *context; // この lvar が定義されている関数名
-  int offset;    // メモリ上のオフセット。fp からの位置
+  Type *type;
+  int offset; // メモリ上のオフセット。fp からの位置
 };
 
 typedef struct Node Node;

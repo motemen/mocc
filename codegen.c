@@ -26,7 +26,8 @@ void codegen_push_t0() {
   printf("  addi sp, sp, -8\n");
 }
 
-// これの存在おかしい気がする。pop しすぎでは？
+// FIXME: これの存在おかしい気がする。pop しすぎでは？
+// codegen を codegen_expr と codegen_stmt にわけるのがよさそう
 void codegen_push_dummy() {
   printf("  # push dummy\n");
   printf("  addi sp, sp, -8\n");
@@ -75,15 +76,24 @@ void codegen_epilogue() {
 int label_index = 0;
 
 // LVar である node のアドレスを push する
+// または、ポインタの deref を計算してアドレスを push する
 void codegen_push_lvalue(Node *node) {
-  if (node->kind != ND_LVAR) {
-    error_at(node->source_pos, "not an lvalue: %s",
-             node_kind_to_str(node->kind));
+  if (node->kind == ND_LVAR) {
+    printf("  # address for '%.*s'\n", node->source_len, node->source_pos);
+    printf("  addi t0, fp, -%d\n", node->lvar->offset);
+    codegen_push_t0();
+    return;
   }
 
-  printf("  # address for '%.*s'\n", node->source_len, node->source_pos);
-  printf("  addi t0, fp, -%d\n", node->lvar->offset);
-  codegen_push_t0();
+  // *y -> y の値をアドレスとして push する
+  // **z -> (*z) の値をアドレスとして push する
+  if (node->kind == ND_DEREF) {
+    printf("  # deref\n");
+    codegen_visit(node->lhs);
+    return;
+  }
+
+  error_at(node->source_pos, "not an lvalue: %s", node_kind_to_str(node->kind));
 }
 
 void codegen_visit(Node *node) {
@@ -174,6 +184,7 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_ASSIGN:
+    printf("  # ND_ASSIGN {\n");
     // -> t0
     codegen_push_lvalue(node->lhs);
     // -> t1
@@ -188,6 +199,7 @@ void codegen_visit(Node *node) {
     printf("  mv t0, t1\n");
 
     codegen_push_t0();
+    printf("  # ND_ASSIGN }\n");
     return;
 
   case ND_RETURN:
@@ -347,10 +359,13 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_DEREF:
-    codegen_push_lvalue(node->lhs);
+    printf("  # ND_DEREF {\n");
+    // codegen_push_lvalue(node->lhs);
+    codegen_visit(node->lhs);
     codegen_pop_t0();
     printf("  ld t0, 0(t0)\n");
     codegen_push_t0();
+    printf("  # ND_DEREF }\n");
 
     return;
 
@@ -361,6 +376,8 @@ void codegen_visit(Node *node) {
 
   case ND_VARDECL:
     // なにもしない
+    printf("  # vardecl '%.*s' offset=%d\n", node->lvar->len, node->lvar->name,
+           node->lvar->offset);
     codegen_push_dummy();
     return;
   }
