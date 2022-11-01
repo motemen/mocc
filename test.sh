@@ -6,6 +6,17 @@ test_count=0
 
 $riscv_cc -c test/helper.c -o test/helper.o
 
+ok() {
+  echo "ok - $*"
+}
+
+not_ok() {
+  echo "not ok - $*"
+  if [ "$TAP_BAIL" = 1 ]; then
+    exit 1
+  fi
+}
+
 compile_program() {
   input="$1"
 
@@ -31,7 +42,7 @@ assert_program_lives() {
   # 255 は segmentation fault とかなので
   if [ "$?" -eq 255 ]; then
     (( test_count++ ))
-    echo "not ok - Program exited with 255"
+    not_ok "Program exited with 255"
   fi
 }
 
@@ -43,16 +54,16 @@ assert_compile_error() {
 
   if [ $? -ne 1 ]; then
     (( test_count++ ))
-    echo "not ok - $input -> compile error $error expected, but unexpectedly succeeded"
+    not_ok "$input -> compile error $error expected, but unexpectedly succeeded"
     return
   fi
 
   if grep "$error" tmp.err; then
     (( test_count++ ))
-    echo "ok - $input -> compile error $error"
+    ok "$input -> compile error $error"
   else
     (( test_count++ ))
-    echo "not ok - $input -> compile error $error expected, but got $(cat tmp.err)"
+    not_ok "$input -> compile error $error expected, but got $(cat tmp.err)"
   fi
 }
 
@@ -65,10 +76,10 @@ assert_program() {
 
   if [ "$actual" = "$expected" ]; then
     (( test_count++ ))
-    echo "ok - $input => $actual"
+    ok "$input => $actual"
   else
     (( test_count++ ))
-    echo "not ok - $input => $expected expected, but got $actual"
+    not_ok "$input => $expected expected, but got $actual"
   fi
 }
 
@@ -80,10 +91,10 @@ assert_program_output() {
 
   if echo "$output" | grep --silent "$string"; then
     (( test_count++ ))
-    echo "ok - $input => has output '$string'"
+    ok "$input => has output '$string'"
   else
     (( test_count++ ))
-    echo "not ok - $input => output '$string' expected, but got '$output'"
+    not_ok "$input => output '$string' expected, but got '$output'"
   fi
 }
 
@@ -96,6 +107,10 @@ assert() {
 }
 
 assert_program 0 'int x; int main() { return x; }'
+assert_program 1 'int x; int main() { x = 1; return x; }'
+assert_program 3 'int x; int y; int main() { x = 1; y = 2; return x + y; }'
+assert_program 59 'int x; int y; int main() { int z; x = 3; y = 14; z = 42; return x + y + z; }'
+assert_program 88 'int foo; int main() { int foo; foo = 88; return foo; }'
 
 assert_program 69 'int main() { int a[2]; *(a+0) = 34; *(a+1) = 35; return *(a+0) + *(a+1); }'
 assert_program 71 'int main() { int a[2]; a[0] = 35; a[1] = 36; return a[0] + a[1]; }'

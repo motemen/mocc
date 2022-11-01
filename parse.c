@@ -348,8 +348,11 @@ Type *inspect_type(Node *node) {
   case ND_ADDR:
     return new_type_ptr_to(inspect_type(node->lhs));
 
+  case ND_GVAR:
+    return node->gvar->type;
+
   default:
-    error_at(node->source_pos, "sizeof: unimplemented");
+    error_at(node->source_pos, "typeof: unimplemented");
   }
 }
 

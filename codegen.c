@@ -114,6 +114,15 @@ void codegen_push_lvalue(Node *node) {
     return;
   }
 
+  if (node->kind == ND_GVAR) {
+    printf("  # address for global variable '%.*s'\n", node->gvar->len,
+           node->gvar->name);
+    printf("  lui t0, %%hi(%.*s)\n", node->gvar->len, node->gvar->name);
+    printf("  addi t0, t0, %%lo(%.*s)\n", node->gvar->len, node->gvar->name);
+    codegen_push_t0();
+    return;
+  }
+
   error_at(node->source_pos, "not an lvalue: %s", node_kind_to_str(node->kind));
 }
 
@@ -442,6 +451,7 @@ bool codegen(Node *node) {
 
   case ND_FUNCDECL:
     printf("\n");
+    printf("  .text\n");
     printf("%.*s:\n", node->name_len, node->name);
 
     context = strndup(node->name, node->name_len);
@@ -474,6 +484,8 @@ bool codegen(Node *node) {
     return false;
 
   case ND_GVARDECL:
+    printf("\n");
+    printf("  .data\n");
     printf("%.*s:\n", node->gvar->len, node->gvar->name);
     printf("  .zero %d\n", sizeof_type(node->gvar->type));
     return false;
