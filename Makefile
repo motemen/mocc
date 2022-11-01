@@ -8,7 +8,7 @@ OBJS=$(SRCS:.c=.o)
 $(OBJS): 9cv.h
 
 test: 9cv
-	./test.sh
+	prove -v ./test.sh
 
 clean:
 	rm -f 9cv *.o *~ tmp*

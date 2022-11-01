@@ -2,15 +2,25 @@
 
 riscv_cc=riscv64-$RISCV_HOST-gcc
 
+test_count=0
+
+compile_program() {
+  input="$1"
+
+  ./9cv "$input" > tmp.s || return $?
+  $riscv_cc -static -o tmp tmp.s
+}
+
 run_program() {
   input="$1"
-  echo "# input: $input" >&2
 
-  ./9cv "$input" > tmp.s || exit 1
-  $riscv_cc -static -o tmp tmp.s || exit 1
+  if ! compile_program "$input"; then
+    echo "# could not compile $input"
+    return 255
+  fi
 
-  spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp
-  return "$?"
+  spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp 2>/dev/null | perl -ne 'print unless $.==1 && /^bbl loader\r$/'
+  return "${PIPESTATUS[0]}"
 }
 
 assert_program_lives() {
@@ -18,8 +28,8 @@ assert_program_lives() {
   run_program "$input"
   # 255 は segmentation fault とかなので
   if [ "$?" -eq 255 ]; then
-    echo "Program exited with 255" >&2
-    exit 1
+    (( test_count++ ))
+    echo "not ok - Program exited with 255"
   fi
 }
 
@@ -27,20 +37,20 @@ assert_compile_error() {
   error="$1"
   input="$2"
 
-  echo "# input: $input" >&2
-
-  error_got=$(./9cv "$input" 2>&1)
+  compile_program "$input" 2> tmp.err
   
   if [ $? -ne 1 ]; then
-    echo "$input -> compile error $error expected, but unexpectedly succeeded"
-    exit 1
+    (( test_count++ ))
+    echo "not ok - $input -> compile error $error expected, but unexpectedly succeeded"
+    return
   fi
 
-  if echo "$error_got" | grep "$error"; then
-    echo "$input -> compile error $error"
+  if grep "$error" tmp.err; then
+    (( test_count++ ))
+    echo "ok - $input -> compile error $error"
   else
-    echo "$input -> compile error $error expected, but got $error_got"
-    exit 1
+    (( test_count++ ))
+    echo "not ok - $input -> compile error $error expected, but got $(cat tmp.err)"
   fi
 }
 
@@ -52,10 +62,11 @@ assert_program() {
   actual="$?"
 
   if [ "$actual" = "$expected" ]; then
-    echo "$input => $actual"
+    (( test_count++ ))
+    echo "ok - $input => $actual"
   else
-    echo "$input => $expected expected, but got $actual"
-    exit 1
+    (( test_count++ ))
+    echo "not ok - $input => $expected expected, but got $actual"
   fi
 }
 
@@ -68,8 +79,14 @@ assert() {
 }
 
 # 通る
+assert_program 0 'int main() { int a[2]; }'
+assert_program 0 'int main() { int a[2]; *a = 1; }'
+assert_program 1 'int main() { int a[2]; *a = 1; return *a; }'
+assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *(a + 1); }'
 assert_program 1 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p; } '
 
+
+exit
 # 通る
 assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(a+1); } '
 
@@ -261,5 +278,5 @@ if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --
   exit 1
 fi
 
-
-echo OK
+echo
+echo "1..$test_count"
