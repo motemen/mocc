@@ -12,15 +12,17 @@
 
 // これ addi 4 にしたら死んだ
 void codegen_pop_t0() {
-  printf("  # pop t0\n");
+  printf("  # pop t0 {{{\n");
   printf("  ld t0, 0(sp)\n");
   printf("  addi sp, sp, 8\n");
+  printf("  # }}}\n");
 }
 
 void codegen_pop_t1() {
-  printf("  # pop t1\n");
+  printf("  # pop t1 {{{\n");
   printf("  ld t1, 0(sp)\n");
   printf("  addi sp, sp, 8\n");
+  printf("  # }}}");
 }
 
 void codegen_pop_discard() {
@@ -29,9 +31,10 @@ void codegen_pop_discard() {
 }
 
 void codegen_push_t0() {
-  printf("  # push t0\n");
+  printf("  # push t0 {{{\n");
   printf("  sd t0, -8(sp)\n");
   printf("  addi sp, sp, -8\n");
+  printf("  # }}}\n");
 }
 
 static int max_lvar_offset(const char *context) {
@@ -92,14 +95,14 @@ int label_index = 0;
 // または、ポインタの deref を計算してアドレスを push する
 void codegen_push_lvalue(Node *node) {
   if (node->kind == ND_LVAR) {
-    printf("  # address for '%.*s'\n", node->source_len, node->source_pos);
+    printf("  # address for '%.*s'\n", node->lvar->len, node->lvar->name);
     printf("  addi t0, fp, -%d\n", node->lvar->offset);
     codegen_push_t0();
     return;
   }
 
   // *y -> y の値をアドレスとして push する
-  // y が配列のときは *(&y) みたいな感じであつかう
+  // y が配列のときは *y[0] みたいな感じであつかう
   // **z -> (*z) の値をアドレスとして push する
   if (node->kind == ND_DEREF) {
     printf("  # deref\n");
@@ -162,7 +165,7 @@ void codegen_expr(Node *node) {
 
     // TODO: ltype しかみてないけど rtype もみたいよね
     Type *ltype = typeof_node(node->lhs);
-    if (ltype->ty == PTR) {
+    if (ltype->ty == PTR || ltype->ty == ARRAY) {
       if (node->lhs->is_synthetic_ptr) {
         // int a[10]; な a が &a に変換されてやってきたので
         // ltype = pointer to array of int みたいになってる
@@ -175,6 +178,9 @@ void codegen_expr(Node *node) {
 
     codegen_expr(node->lhs); // -> t0
     codegen_expr(node->rhs); // -> t1
+
+    printf("  # pointer arithmetic: ltype=(%s), ptr_size=%d\n",
+           type_to_str(ltype), ptr_size);
 
     codegen_pop_t1();
     if (ptr_size > 1) {
@@ -235,9 +241,17 @@ void codegen_expr(Node *node) {
     return;
 
   case ND_LVAR:
-    codegen_push_lvalue(node);
-    codegen_pop_t0();
-    printf("  ld t0, 0(t0)\n");
+    // codegen_push_lvalue(node);
+    // codegen_pop_t0();
+    // printf("  ld t0, 0(t0)\n");
+    // codegen_push_t0();
+    if (node->lvar->type->ty == ARRAY) {
+      // 配列の場合は先頭要素へのポインタに変換されるのでアドレスを push
+      // sizeof, & の場合だけ例外だがそれはそちら側で処理されてる。はず。
+      printf("  add t0, fp, -%d\n", node->lvar->offset);
+    } else {
+      printf("  ld t0, -%d(fp)\n", node->lvar->offset);
+    }
     codegen_push_t0();
     return;
 
@@ -297,7 +311,11 @@ void codegen_expr(Node *node) {
   case ND_DEREF:
     printf("  # ND_DEREF {\n");
     // codegen_push_lvalue(node->lhs);
-    codegen_expr(node->lhs);
+    if (typeof_node(node->lhs)->ty == ARRAY) {
+      codegen_push_lvalue(node->lhs);
+    } else {
+      codegen_expr(node->lhs);
+    }
     codegen_pop_t0();
     printf("  ld t0, 0(t0)\n");
     codegen_push_t0();
@@ -306,6 +324,7 @@ void codegen_expr(Node *node) {
     return;
 
   case ND_ADDR:
+    // TODO: ARRAY のときなんかやる
     codegen_push_lvalue(node->lhs);
 
     return;

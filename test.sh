@@ -106,6 +106,33 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 16 'int main() { int a[4]; return sizeof(a); }'
+assert_program 8 'int main() { int a[4]; return sizeof(&a); }'
+assert_program 4 'int main() { int a[4]; return sizeof(a[0]); }'
+
+assert_program 4 'int main() { char a[4]; return sizeof(a); }'
+assert_program 8 'int main() { char a[4]; return sizeof(&a); }'
+assert_program 1 'int main() { char a[4]; return sizeof(a[0]); }'
+
+assert_program 0 'int main() { int a[2]; }'
+assert_program 0 'int main() { int a[2]; *a = 1; }'
+assert_program 1 'int main() { int a[2]; *a = 1; return *a; }'
+assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *(a + 1); }'
+assert_program 1 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p; } '
+assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(a+1); } '
+assert_program 3 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *a + *(a+1); } '
+assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(p+1); } '
+
+assert_program 0 'int main() { int a[2]; *a = 34; }'
+assert_program 0 'int main() { int a[2]; return *a; }'
+assert_program 34 'int main() { int a[2]; *a = 34; return *a; }'
+assert_program 39 'int main() { int a[2]; *(a+0) = 39; return *a; }'
+
+assert_program 0 'int main() { int a[2]; *(a+0) = 34; *(a+1) = 35; }'
+assert_program 69 'int main() { int a[2]; *(a+0) = 34; *(a+1) = 35; return *(a+0) + *(a+1); }'
+assert_program 71 'int main() { int a[2]; a[0] = 35; a[1] = 36; return a[0] + a[1]; }'
+assert_program 73 'int main() { int a[2]; 0[a] = 36; 1[a] = 37; return 0[a] + 1[a]; }'
+
 assert_program 0 'int main() { char x[3]; x[2] = -4; *(x+1) = 2; *x = -1; int y; y = 4; return x[2] + y; }'
 
 assert_program 3 'int main() { char x[3]; x[0] = -1; x[1] = 2; x[2] = -4; int y; y = 4; return x[0] + y; }'
@@ -118,72 +145,21 @@ assert_program 3 'int x; int y; int main() { x = 1; y = 2; return x + y; }'
 assert_program 59 'int x; int y; int main() { int z; x = 3; y = 14; z = 42; return x + y + z; }'
 assert_program 88 'int foo; int main() { int foo; foo = 88; return foo; }'
 
-assert_program 69 'int main() { int a[2]; *(a+0) = 34; *(a+1) = 35; return *(a+0) + *(a+1); }'
-assert_program 71 'int main() { int a[2]; a[0] = 35; a[1] = 36; return a[0] + a[1]; }'
-assert_program 73 'int main() { int a[2]; 0[a] = 36; 1[a] = 37; return 0[a] + 1[a]; }'
+assert_program 3 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1); }'
 
-assert_program 0 'int main() { int a[2]; }'
-assert_program 0 'int main() { int a[2]; *a = 1; }'
 assert_program 1 'int main() { int a[2]; *a = 1; return *a; }'
+
 assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *(a + 1); }'
-assert_program 1 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p; } '
-assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(a+1); } '
-assert_program 3 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *a + *(a+1); } '
-assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(p+1); } '
 
-assert_program 3 'int main() {
-int a[2];
-*a = 1;
-*(a + 1) = 2;
-int *p;
-p = a;
-return *p + *(p + 1);
-}
-'
+assert_program 3 'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *a + *(a + 1); }'
 
-assert_program 1 'int main() {
-int a[2];
-*a = 1;
-return *a;
-}'
+assert_program 1 'int main() { int x; x = 1; int *p; p = &x; return *p; }'
 
-assert_program 2 'int main() {
-int a[2];
-*a = 1;
-*(a + 1) = 2;
-return *(a + 1);
-}'
-
-assert_program 3 'int main() {
-int a[2];
-*a = 1;
-*(a + 1) = 2;
-return *a + *(a + 1);
-}'
-
-assert_program 1 'int main() {
-int x;
-x = 1;
-int *p;
-p = &x;
-return *p;
-}'
-
-assert_program 99 'int main() {
-int a[1];
-*a = 99;
-int *p;
-p = a;
-return *p;
-}'
+assert_program 99 'int main() { int a[1]; *a = 99; int *p; p = a; return *p; }'
 
 assert_program 98 'int foo() {} int main() { int x; x = 98; foo(); return x; }'
 
-assert_program 1 'int main() {
-  int a[200];
-  *a = 1;
-  return *a;
-}'
+assert_program 1 'int main() { int a[200]; *a = 1; return *a; }'
 assert_program 1 'int main() { int x; x = 1; int a[10]; return x; }'
 assert_program 40 'int main() { int a[10]; return sizeof a; }'
 assert_program 40 'int main() { int a[10]; return sizeof(a); }'

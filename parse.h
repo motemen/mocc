@@ -98,6 +98,8 @@ extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
 int sizeof_type(Type *type);
 Type *typeof_node(Node *node);
+Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
+char *type_to_str(Type *type);
 
 extern LVar *locals;
 

@@ -66,7 +66,22 @@ char *node_kind_to_str(NodeKind kind) {
   return "(unknown)";
 }
 
-static Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+char *type_to_str(Type *type) {
+  char *buf = calloc(100, sizeof(char));
+  if (type->ty == INT) {
+    return "int";
+  } else if (type->ty == PTR) {
+    snprintf(buf, 100, "ptr to %s", type_to_str(type->base));
+    return buf;
+  } else if (type->ty == ARRAY) {
+    snprintf(buf, 100, "array of %s", type_to_str(type->base));
+    return buf;
+  }
+
+  return "(unknown)";
+}
+
+Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
   node->lhs = lhs;
@@ -254,9 +269,9 @@ static Node *parse_primary() {
         // int a[100]; のとき a は int へのポインタ int * だが
         // &a は int[100] へのポインタ int (*)[100] になることに注意!!!
         // ってことはここで人工的に &a を返すのはよくないなあ
-        Node *ptr = new_node(ND_ADDR, node, NULL);
-        ptr->is_synthetic_ptr = true;
-        return ptr;
+        // Node *ptr = new_node(ND_ADDR, node, NULL);
+        // ptr->is_synthetic_ptr = true;
+        // return ptr;
         // TODO: 添字ありの場合はまだ実装してない
         // と思ったけど a[3] を *(a+3) にするんなら特に対応いらんのかな
       }
@@ -309,6 +324,11 @@ Type *typeof_node(Node *node) {
     Type *ltype = typeof_node(node->lhs);
     Type *rtype = typeof_node(node->rhs);
 
+    if (ltype->ty == ARRAY)
+      ltype = new_type_ptr_to(ltype->base);
+    if (rtype->ty == ARRAY)
+      rtype = new_type_ptr_to(rtype->base);
+
     if (ltype->ty == INT && rtype->ty == INT) {
       return &int_type;
     }
@@ -319,7 +339,9 @@ Type *typeof_node(Node *node) {
       return rtype;
     }
 
-    error_at(node->source_pos, "invalid or unimplemented pointer arithmetic");
+    error_at(node->source_pos,
+             "invalid or unimplemented pointer arithmetic: %s and %s",
+             type_to_str(ltype), type_to_str(rtype));
   }
 
   case ND_MUL:
@@ -335,19 +357,7 @@ Type *typeof_node(Node *node) {
 
   case ND_DEREF: {
     Type *type = typeof_node(node->lhs);
-    fprintf(stderr, "\ntypeof_node ND_DEREF %d\n", type->ty);
-    if (type->ty == PTR) {
-      fprintf(stderr, "\ntypeof_node ND_DEREF %d base %d\n", type->ty,
-              type->base->ty);
-
-      // これはこれでいいのか…？
-      // int arr[10] なとき *arr は *(<addr of arr>) みたいにパーズするので
-      // 普通にやると *a が int[10] という型に見えちゃうけど
-      // ここは int を返したい…わけです
-      if (node->lhs->is_synthetic_ptr) {
-        return type->base->base;
-      }
-
+    if (type->ty == PTR || type->ty == ARRAY) {
       return type->base;
     }
 
