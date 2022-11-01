@@ -472,6 +472,11 @@ bool codegen(Node *node) {
     printf("  # vardecl '%.*s' offset=%d\n", node->lvar->len, node->lvar->name,
            node->lvar->offset);
     return false;
+
+  case ND_GVARDECL:
+    printf("%.*s:\n", node->gvar->len, node->gvar->name);
+    printf("  .zero %d\n", sizeof_type(node->gvar->type));
+    return false;
   }
 
   error_at(node->source_pos, "codegen not implemented: %s",

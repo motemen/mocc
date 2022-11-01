@@ -5,6 +5,7 @@ typedef struct Type Type;
 typedef struct NodeList NodeList;
 typedef struct Node Node;
 typedef struct LVar LVar;
+typedef struct GVar GVar;
 
 struct Type {
   enum { INT, PTR, ARRAY } ty;
@@ -20,6 +21,13 @@ struct LVar {
   char *context; // この lvar が定義されている関数名
   Type *type;
   int offset; // メモリ上のオフセット。fp からの位置
+};
+
+struct GVar {
+  GVar *next;
+  char *name;
+  int len; // name の長さ
+  Type *type;
 };
 
 typedef enum {
@@ -44,6 +52,8 @@ typedef enum {
   ND_DEREF,   // unary *
   ND_ADDR,    // unary &
   ND_VARDECL, //
+  ND_GVARDECL,
+  ND_GVAR,
 } NodeKind;
 
 struct Node {
@@ -68,7 +78,8 @@ struct Node {
   int name_len;
 
   int val;    // used when kind == ND_NUM
-  LVar *lvar; // used when kind == ND_LVAR
+  LVar *lvar; // ND_LVAR || ND_VARDECL
+  GVar *gvar; // ND_VARDECL かつトップレベル
 
   bool synthetic; // ソースコード由来でなく、コンパイラの都合で生成されたノード
 

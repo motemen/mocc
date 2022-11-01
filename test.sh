@@ -95,6 +95,8 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 0 'int x; int main() { return x; }'
+
 assert_program 69 'int main() { int a[2]; *(a+0) = 34; *(a+1) = 35; return *(a+0) + *(a+1); }'
 assert_program 71 'int main() { int a[2]; a[0] = 35; a[1] = 36; return a[0] + a[1]; }'
 assert_program 73 'int main() { int a[2]; 0[a] = 36; 1[a] = 37; return 0[a] + 1[a]; }'

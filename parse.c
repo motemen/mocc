@@ -10,6 +10,7 @@
 #include <string.h>
 
 LVar *locals;
+GVar *globals;
 char *context; // いまみてる関数名
 
 char *node_kind_to_str(NodeKind kind) {
@@ -56,6 +57,10 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_ADDR";
   case ND_VARDECL:
     return "ND_VARDECL";
+  case ND_GVARDECL:
+    return "ND_GVARDECL";
+  case ND_GVAR:
+    return "ND_GVAR";
   }
 
   return "(unknown)";
@@ -89,7 +94,7 @@ LVar *find_lvar(char *context, char *name, int len) {
     }
   }
 
-  error("variable not found: '%.*s' in %s", len, name, context);
+  return NULL;
 }
 
 LVar *add_lvar(char *context, char *name, int len, Type *type) {
@@ -127,10 +132,42 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
   return var;
 }
 
+GVar *find_gvar(char *name, int len) {
+  for (GVar *var = globals; var; var = var->next) {
+    if (var->len == len && !strncmp(var->name, name, len)) {
+      return var;
+    }
+  }
+
+  return NULL;
+}
+
+GVar *add_gvar(char *name, int len, Type *type) {
+  GVar *last_var = globals;
+  for (GVar *var = globals; var; last_var = var, var = var->next) {
+    if (var->len == len && !strncmp(var->name, name, len)) {
+      error("global variable already defined: '%.*s'", len, name);
+    }
+  }
+
+  GVar *var = calloc(1, sizeof(GVar));
+  var->name = name;
+  var->len = len;
+  var->type = type;
+
+  if (last_var) {
+    last_var->next = var;
+  } else {
+    globals = var;
+  }
+
+  return var;
+}
+
 ///// Parser /////
 
 // Syntax:
-//    program     = funcdecl*
+//    program     = (funcdecl | vardecl)*
 //    funcdecl    = "int" ident "(" "int" expr ("," "int" expr)* ")"
 //                  "{" stmt* "}"
 //    type        = "int" "*"*
@@ -204,23 +241,37 @@ static Node *parse_primary() {
       return node;
     }
 
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
     LVar *lvar = find_lvar(context, tok->str, tok->len);
-    node->lvar = lvar;
-    node->source_pos = tok->str;
-    node->source_len = tok->len;
+    if (lvar) {
+      Node *node = calloc(1, sizeof(Node));
+      node->kind = ND_LVAR;
+      node->lvar = lvar;
+      node->source_pos = tok->str;
+      node->source_len = tok->len;
 
-    if (lvar->type->ty == ARRAY) {
-      // 添字なしの配列のときは配列へのポインタを返す
-      Node *ptr = new_node(ND_ADDR, node, NULL);
-      ptr->synthetic = true;
-      return ptr;
-      // TODO: 添字ありの場合はまだ実装してない
-      // と思ったけど a[3] を *(a+3) にするんなら特に対応いらんのかな
+      if (lvar->type->ty == ARRAY) {
+        // 添字なしの配列のときは配列へのポインタを返す
+        Node *ptr = new_node(ND_ADDR, node, NULL);
+        ptr->synthetic = true;
+        return ptr;
+        // TODO: 添字ありの場合はまだ実装してない
+        // と思ったけど a[3] を *(a+3) にするんなら特に対応いらんのかな
+      }
+
+      return node;
     }
 
-    return node;
+    GVar *gvar = find_gvar(tok->str, tok->len);
+    if (gvar) {
+      Node *node = calloc(1, sizeof(Node));
+      node->kind = ND_GVAR;
+      node->gvar = gvar;
+      node->source_pos = tok->str;
+      node->source_len = tok->len;
+      return node;
+    }
+
+    error("variable not found: '%.*s'", tok->len, tok->str);
   }
 
   int val = token_expect_number();
@@ -585,9 +636,10 @@ Node *parse_stmt() {
   return node;
 }
 
-Node *parse_funcdecl() {
-  if (!token_consume(TK_TYPE)) {
-    error("TK_TYPE expected");
+Node *parse_funcdecl_or_vardecl() {
+  Type *type = parse_type();
+  if (!type) {
+    error("type expected");
   }
 
   Token *ident = token_consume_ident();
@@ -604,52 +656,71 @@ Node *parse_funcdecl() {
 
   context = strndup(ident->str, ident->len);
 
-  token_expect("(");
+  if (token_consume_reserved("(")) {
+    if (token_consume_reserved(")")) {
+      // 引数ナシ
+    } else {
+      NodeList head = {};
+      NodeList *cur = &head;
+      while (true) {
+        Type *type = parse_type();
+        if (!type) {
+          error("type expected");
+        }
 
-  if (token_consume_reserved(")")) {
-    // 引数ナシ
-  } else {
-    NodeList head = {};
-    NodeList *cur = &head;
-    while (true) {
-      Type *type = parse_type();
-      if (!type) {
-        error("type expected");
+        Token *tok = token_consume_ident();
+        if (!tok) {
+          error("expected ident");
+        }
+
+        Node *ident = calloc(1, sizeof(Node));
+        ident->kind = ND_LVAR;
+        LVar *lvar = add_lvar(context, tok->str, tok->len, type);
+        ident->lvar = lvar;
+        ident->source_pos = tok->str;
+        ident->source_len = tok->len;
+
+        NodeList *node_item = calloc(1, sizeof(NodeList));
+        node_item->node = ident;
+        cur->next = node_item;
+        cur = cur->next;
+
+        if (token_consume_reserved(")")) {
+          break;
+        }
+
+        token_expect(",");
       }
 
-      Token *tok = token_consume_ident();
-      if (!tok) {
-        error("expected ident");
-      }
-
-      Node *ident = calloc(1, sizeof(Node));
-      ident->kind = ND_LVAR;
-      LVar *lvar = add_lvar(context, tok->str, tok->len, type);
-      ident->lvar = lvar;
-      ident->source_pos = tok->str;
-      ident->source_len = tok->len;
-
-      NodeList *node_item = calloc(1, sizeof(NodeList));
-      node_item->node = ident;
-      cur->next = node_item;
-      cur = cur->next;
-
-      if (token_consume_reserved(")")) {
-        break;
-      }
-
-      token_expect(",");
+      node->args = head.next;
     }
 
-    node->args = head.next;
+    // TODO: 関数の型を～～
+
+    Node *block = parse_block();
+    if (!block) {
+      error("expected block");
+    }
+
+    node->nodes = block->nodes;
+
+    return node;
   }
 
-  Node *block = parse_block();
-  if (!block) {
-    error("expected block");
+  // こちらからグローバル変数になります
+  node->kind = ND_GVARDECL;
+
+  if (token_consume_reserved("[")) {
+    int size = token_expect_number();
+    token_expect("]");
+
+    type = new_type_array_of(type, size);
   }
 
-  node->nodes = block->nodes;
+  token_expect(";");
+
+  GVar *gvar = add_gvar(ident->str, ident->len, type);
+  node->gvar = gvar;
 
   return node;
 }
@@ -659,7 +730,7 @@ Node *code[100];
 void parse_program() {
   int i = 0;
   while (!token_at_eof()) {
-    code[i++] = parse_funcdecl();
+    code[i++] = parse_funcdecl_or_vardecl();
   }
   code[i] = NULL;
 }
