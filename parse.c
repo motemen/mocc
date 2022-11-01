@@ -148,10 +148,12 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
 //    relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
 //    add         = mul ("+" mul | "-" mul)*
 //    mul         = unary ("*" unary | "/" unary)*
-//    unary       = ("+" | "-")? primary
+//    unary       = ("+" | "-")? postfix
 //                | "*" unary
 //                | "&" unary
 //                | "sizeof" unary
+//                | postfix
+//    postfix     = primary ("[" expr "]")*
 //    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
 //    ident	      = /[a-z][a-z0-9]*/
 //    num         = [0-9]+
@@ -311,9 +313,23 @@ int sizeof_type(Type *type) {
   }
 }
 
+static Node *parse_postfix() {
+  Node *node = parse_primary();
+
+  while (token_consume_reserved("[")) {
+    Node *expr = parse_expr();
+    token_expect("]");
+    // TODO: node->synthetic のときに剥がす、というようなことをしてないので
+    // *(a+3) と *(&a+3) が区別できないんじゃないかなあ
+    node = new_node(ND_DEREF, new_node(ND_ADD, node, expr), NULL);
+  }
+
+  return node;
+}
+
 static Node *parse_unary() {
   if (token_consume_reserved("+")) {
-    return parse_primary();
+    return parse_postfix();
   }
 
   if (token_consume_reserved("-")) {
@@ -344,7 +360,7 @@ static Node *parse_unary() {
     return new_node_num(size);
   }
 
-  return parse_primary();
+  return parse_postfix();
 }
 
 static Node *parse_mul() {

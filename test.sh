@@ -95,20 +95,17 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
-# 通る
+assert_program 69 'int main() { int a[2]; *(a+0) = 34; *(a+1) = 35; return *(a+0) + *(a+1); }'
+assert_program 71 'int main() { int a[2]; a[0] = 35; a[1] = 36; return a[0] + a[1]; }'
+assert_program 73 'int main() { int a[2]; 0[a] = 36; 1[a] = 37; return 0[a] + 1[a]; }'
+
 assert_program 0 'int main() { int a[2]; }'
 assert_program 0 'int main() { int a[2]; *a = 1; }'
 assert_program 1 'int main() { int a[2]; *a = 1; return *a; }'
 assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *(a + 1); }'
 assert_program 1 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p; } '
-
-# 通る
 assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(a+1); } '
-
-# 通る
 assert_program 3 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *a + *(a+1); } '
-
-# 通らない
 assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(p+1); } '
 
 assert_program 3 'int main() {
