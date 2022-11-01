@@ -34,13 +34,6 @@ void codegen_push_t0() {
   printf("  addi sp, sp, -8\n");
 }
 
-// FIXME: これの存在おかしい気がする。pop しすぎでは？
-// codegen を codegen_expr と codegen_stmt にわけるのがよさそう
-void codegen_push_dummy() {
-  printf("  # push dummy\n");
-  printf("  addi sp, sp, -8\n");
-}
-
 static int max_lvar_offset(const char *context) {
   int max = 0;
 
