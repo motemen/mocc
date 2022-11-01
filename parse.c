@@ -251,6 +251,9 @@ static Node *parse_primary() {
 
       if (lvar->type->ty == ARRAY) {
         // 添字なしの配列のときは配列へのポインタを返す
+        // int a[100]; のとき a は int へのポインタ int * だが
+        // &a は int[100] へのポインタ int (*)[100] になることに注意!!!
+        // ってことはここで人工的に &a を返すのはよくないなあ
         Node *ptr = new_node(ND_ADDR, node, NULL);
         ptr->is_synthetic_ptr = true;
         return ptr;
@@ -332,14 +335,19 @@ Type *typeof_node(Node *node) {
 
   case ND_DEREF: {
     Type *type = typeof_node(node->lhs);
+    fprintf(stderr, "\ntypeof_node ND_DEREF %d\n", type->ty);
     if (type->ty == PTR) {
+      fprintf(stderr, "\ntypeof_node ND_DEREF %d base %d\n", type->ty,
+              type->base->ty);
+
       // これはこれでいいのか…？
       // int arr[10] なとき *arr は *(<addr of arr>) みたいにパーズするので
       // 普通にやると *a が int[10] という型に見えちゃうけど
       // ここは int を返したい…わけです
-      if (node->lhs->is_synthetic_ptr && type->base->ty == ARRAY) {
+      if (node->lhs->is_synthetic_ptr) {
         return type->base->base;
       }
+
       return type->base;
     }
 

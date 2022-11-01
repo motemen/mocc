@@ -159,7 +159,8 @@ void codegen_expr(Node *node) {
   case ND_ADD:
   case ND_SUB: {
     int ptr_size = 0;
-    // synthetic のときは int a[10]; a + 1 の a を &a とみなしてるのでいったん
+
+    // TODO: ltype しかみてないけど rtype もみたいよね
     Type *ltype = typeof_node(node->lhs);
     if (ltype->ty == PTR) {
       if (node->lhs->is_synthetic_ptr) {
@@ -252,7 +253,21 @@ void codegen_expr(Node *node) {
 
     printf("  # assign to variable '%.*s'\n", node->lhs->source_len,
            node->lhs->source_pos);
-    printf("  sd t1, 0(t0)\n");
+
+    // Type *t = typeof_node(node->lhs);
+    // char *loc = node->source_pos;
+    // int pos = loc - user_input;
+    // fprintf(stderr, "%s\n", user_input);
+    // fprintf(stderr, "%*s", pos, " ");
+    // fprintf(stderr, "^ ");
+    // fprintf(stderr, "  # type: %d", t->ty);
+    // fprintf(stderr, "  # sizeof: %d\n", sizeof_type(typeof_node(node->lhs)));
+
+    if (sizeof_type(typeof_node(node->lhs)) == 1) {
+      printf("  sb t1, 0(t0)\n");
+    } else {
+      printf("  sd t1, 0(t0)\n");
+    }
     printf("  mv t0, t1\n");
 
     codegen_push_t0();
