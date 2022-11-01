@@ -8,8 +8,8 @@ typedef struct LVar LVar;
 typedef struct GVar GVar;
 
 struct Type {
-  enum { INT, PTR, ARRAY } ty;
-  Type *ptr_to;
+  enum { CHAR, INT, PTR, ARRAY } ty;
+  Type *base;
 
   size_t array_size; // ty==ARRAY のときのみ
 };
@@ -81,7 +81,8 @@ struct Node {
   LVar *lvar; // ND_LVAR || ND_VARDECL
   GVar *gvar; // ND_VARDECL かつトップレベル
 
-  bool synthetic; // ソースコード由来でなく、コンパイラの都合で生成されたノード
+  // ソースコード由来でなく、コンパイラの都合で生成されたノード
+  bool is_synthetic_ptr;
 
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用
@@ -96,7 +97,7 @@ void parse_program();
 extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
 int sizeof_type(Type *type);
-Type *inspect_type(Node *node);
+Type *typeof_node(Node *node);
 
 extern LVar *locals;
 

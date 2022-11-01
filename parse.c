@@ -168,9 +168,9 @@ GVar *add_gvar(char *name, int len, Type *type) {
 
 // Syntax:
 //    program     = (funcdecl | vardecl)*
-//    funcdecl    = "int" ident "(" "int" expr ("," "int" expr)* ")"
+//    funcdecl    = type ident "(" type expr ("," type expr)* ")"
 //                  "{" stmt* "}"
-//    type        = "int" "*"*
+//    type        = ("int" | "char") "*"*
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
@@ -252,7 +252,7 @@ static Node *parse_primary() {
       if (lvar->type->ty == ARRAY) {
         // 添字なしの配列のときは配列へのポインタを返す
         Node *ptr = new_node(ND_ADDR, node, NULL);
-        ptr->synthetic = true;
+        ptr->is_synthetic_ptr = true;
         return ptr;
         // TODO: 添字ありの場合はまだ実装してない
         // と思ったけど a[3] を *(a+3) にするんなら特に対応いらんのかな
@@ -279,31 +279,32 @@ static Node *parse_primary() {
 }
 
 Type int_type = {INT, NULL};
+Type char_type = {CHAR, NULL};
 
 static Type *new_type_ptr_to(Type *base) {
   Type *type = calloc(1, sizeof(Type));
   type->ty = PTR;
-  type->ptr_to = base;
+  type->base = base;
   return type;
 }
 
 static Type *new_type_array_of(Type *base, int size) {
   Type *type = calloc(1, sizeof(Type));
   type->ty = ARRAY;
-  type->ptr_to = base;
+  type->base = base;
   type->array_size = size;
   return type;
 }
 
-Type *inspect_type(Node *node) {
+Type *typeof_node(Node *node) {
   switch (node->kind) {
   case ND_NUM:
     return &int_type;
 
   case ND_ADD:
   case ND_SUB: {
-    Type *ltype = inspect_type(node->lhs);
-    Type *rtype = inspect_type(node->rhs);
+    Type *ltype = typeof_node(node->lhs);
+    Type *rtype = typeof_node(node->rhs);
 
     if (ltype->ty == INT && rtype->ty == INT) {
       return &int_type;
@@ -330,40 +331,43 @@ Type *inspect_type(Node *node) {
     return node->lvar->type;
 
   case ND_DEREF: {
-    Type *type = inspect_type(node->lhs);
+    Type *type = typeof_node(node->lhs);
     if (type->ty == PTR) {
       // これはこれでいいのか…？
       // int arr[10] なとき *arr は *(<addr of arr>) みたいにパーズするので
       // 普通にやると *a が int[10] という型に見えちゃうけど
       // ここは int を返したい…わけです
-      if (node->lhs->synthetic && type->ptr_to->ty == ARRAY) {
-        return type->ptr_to->ptr_to;
+      if (node->lhs->is_synthetic_ptr && type->base->ty == ARRAY) {
+        return type->base->base;
       }
-      return type->ptr_to;
+      return type->base;
     }
 
     error_at(node->source_pos, "invalid dereference (or not implemented)");
   }
 
   case ND_ADDR:
-    return new_type_ptr_to(inspect_type(node->lhs));
+    return new_type_ptr_to(typeof_node(node->lhs));
 
   case ND_GVAR:
     return node->gvar->type;
 
   default:
-    error_at(node->source_pos, "typeof: unimplemented");
+    error_at(node->source_pos, "typeof_node: unimplemented: %s",
+             node_kind_to_str(node->kind));
   }
 }
 
 int sizeof_type(Type *type) {
   switch (type->ty) {
+  case CHAR:
+    return 1;
   case INT:
     return 4;
   case PTR:
     return 8;
   case ARRAY:
-    return type->array_size * sizeof_type(type->ptr_to);
+    return type->array_size * sizeof_type(type->base);
   }
 }
 
@@ -396,7 +400,7 @@ static Node *parse_unary() {
 
   if (token_consume_reserved("&")) {
     Node *node = parse_unary();
-    if (node->kind == ND_ADDR && node->synthetic) {
+    if (node->kind == ND_ADDR && node->is_synthetic_ptr) {
       node = node->lhs;
     }
     return new_node(ND_ADDR, node, NULL);
@@ -406,10 +410,10 @@ static Node *parse_unary() {
     Node *node = parse_unary();
     // 式全体の型とかいうやつを知りたいですなあ
     // ここで node が &a だったときに人工的な &a だった場合は a にしたい
-    if (node->kind == ND_ADDR && node->synthetic) {
+    if (node->kind == ND_ADDR && node->is_synthetic_ptr) {
       node = node->lhs;
     }
-    Type *type = inspect_type(node);
+    Type *type = typeof_node(node);
     int size = sizeof_type(type);
     return new_node_num(size);
   }
@@ -509,22 +513,24 @@ Node *parse_block() {
 }
 
 Type *parse_type() {
+  Type *type = calloc(1, sizeof(Type));
   if (token_consume_type("int")) {
-    Type *type = calloc(1, sizeof(Type));
     type->ty = INT;
-
-    while (token_consume_reserved("*")) {
-      Type *type_p = calloc(1, sizeof(Type));
-      type_p->ty = PTR;
-      type_p->ptr_to = type;
-
-      type = type_p;
-    }
-
-    return type;
+  } else if (token_consume_type("char")) {
+    type->ty = CHAR;
+  } else {
+    return NULL;
   }
 
-  return NULL;
+  while (token_consume_reserved("*")) {
+    Type *type_p = calloc(1, sizeof(Type));
+    type_p->ty = PTR;
+    type_p->base = type;
+
+    type = type_p;
+  }
+
+  return type;
 }
 
 Node *parse_stmt() {

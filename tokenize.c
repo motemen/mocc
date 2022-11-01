@@ -151,6 +151,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("char", p, 4) == 0 && !isident(p[4])) {
+      cur = new_token(TK_TYPE, cur, p, 4);
+      p += 4;
+      continue;
+    }
+
     if (('a' <= *p && *p <= 'z') || *p == '_') {
       int n = 1;
       while (*(p + n) && isident(*(p + n))) {

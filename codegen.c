@@ -159,19 +159,16 @@ void codegen_expr(Node *node) {
   case ND_ADD:
   case ND_SUB: {
     int ptr_size = 0;
-    Type *ltype = inspect_type(node->lhs);
+    // synthetic のときは int a[10]; a + 1 の a を &a とみなしてるのでいったん
+    Type *ltype = typeof_node(node->lhs);
     if (ltype->ty == PTR) {
-      if (ltype->ptr_to->ty == INT) {
-        ptr_size = 4;
-      } else if (ltype->ptr_to->ty == ARRAY &&
-                 ltype->ptr_to->ptr_to->ty == INT) {
-        // TODO: とりあえずこれでうまくいってる
-        // int a[10] な型はパーズしたときに (<addr of a>)
-        // として扱われるのでこんな処理が入るわけだけど、こんなんでいいのか？
-        // 配列の配列の場合はどうなるべきかなどわかってない
-        ptr_size = 4;
+      if (node->lhs->is_synthetic_ptr) {
+        // int a[10]; な a が &a に変換されてやってきたので
+        // ltype = pointer to array of int みたいになってる
+        // ので2回たどる
+        ptr_size = sizeof_type(ltype->base->base);
       } else {
-        ptr_size = 8;
+        ptr_size = sizeof_type(ltype->base);
       }
     }
 
@@ -179,7 +176,7 @@ void codegen_expr(Node *node) {
     codegen_expr(node->rhs); // -> t1
 
     codegen_pop_t1();
-    if (ptr_size > 0) {
+    if (ptr_size > 1) {
       printf("  # do pointer arithmetic\n");
       printf("  li t3, %d\n", ptr_size);
       printf("  mul t1, t1, t3\n");

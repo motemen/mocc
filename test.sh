@@ -106,6 +106,18 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 3 'int main() {
+  char x[3];
+  x[0] = -1;
+  x[1] = 2;
+  x[2] = -4;
+  int y;
+  y = 4;
+  return x[0] + y;
+}'
+
+assert_program 7 'int main() { char s[7]; return sizeof s; }'
+
 assert_program 0 'int x; int main() { return x; }'
 assert_program 1 'int x; int main() { x = 1; return x; }'
 assert_program 3 'int x; int y; int main() { x = 1; y = 2; return x + y; }'
