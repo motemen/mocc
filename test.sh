@@ -21,7 +21,7 @@ run_program() {
     return 255
   fi
 
-  spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp 2>/dev/null | perl -ne 'print unless $.==1 && /^bbl loader\r$/'
+  spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | perl -ne 'print unless $.==1 && /^bbl loader\r$/'
   return "${PIPESTATUS[0]}"
 }
 

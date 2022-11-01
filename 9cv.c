@@ -25,8 +25,8 @@ int main(int argc, char **argv) {
   printf(".global main\n");
 
   for (int i = 0; code[i]; i++) {
-    codegen_visit(code[i]);
-    codegen_pop_t0();
+    if (codegen(code[i]))
+      codegen_pop_t0();
   }
 
   return 0;

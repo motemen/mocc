@@ -110,14 +110,14 @@ void codegen_push_lvalue(Node *node) {
   // **z -> (*z) の値をアドレスとして push する
   if (node->kind == ND_DEREF) {
     printf("  # deref\n");
-    codegen_visit(node->lhs);
+    codegen_expr(node->lhs);
     return;
   }
 
   error_at(node->source_pos, "not an lvalue: %s", node_kind_to_str(node->kind));
 }
 
-void codegen_visit(Node *node) {
+void codegen_expr(Node *node) {
   int lindex;
 
   switch (node->kind) {
@@ -130,8 +130,8 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_LT:
-    codegen_visit(node->lhs); // -> t0
-    codegen_visit(node->rhs); // -> t1
+    codegen_expr(node->lhs); // -> t0
+    codegen_expr(node->rhs); // -> t1
 
     codegen_pop_t1();
     codegen_pop_t0();
@@ -142,8 +142,8 @@ void codegen_visit(Node *node) {
     return;
 
   case ND_GE:
-    codegen_visit(node->lhs); // -> t0
-    codegen_visit(node->rhs); // -> t1
+    codegen_expr(node->lhs); // -> t0
+    codegen_expr(node->rhs); // -> t1
 
     codegen_pop_t1();
     codegen_pop_t0();
@@ -173,8 +173,8 @@ void codegen_visit(Node *node) {
       }
     }
 
-    codegen_visit(node->lhs); // -> t0
-    codegen_visit(node->rhs); // -> t1
+    codegen_expr(node->lhs); // -> t0
+    codegen_expr(node->rhs); // -> t1
 
     codegen_pop_t1();
     if (ptr_size > 0) {
@@ -199,8 +199,8 @@ void codegen_visit(Node *node) {
 
   case ND_MUL:
   case ND_DIV:
-    codegen_visit(node->lhs); // -> t0
-    codegen_visit(node->rhs); // -> t1
+    codegen_expr(node->lhs); // -> t0
+    codegen_expr(node->rhs); // -> t1
 
     codegen_pop_t1();
     codegen_pop_t0();
@@ -218,8 +218,8 @@ void codegen_visit(Node *node) {
 
   case ND_EQ:
   case ND_NE:
-    codegen_visit(node->lhs); // -> t0
-    codegen_visit(node->rhs); // -> t1
+    codegen_expr(node->lhs); // -> t0
+    codegen_expr(node->rhs); // -> t1
 
     codegen_pop_t1();
     codegen_pop_t0();
@@ -246,7 +246,7 @@ void codegen_visit(Node *node) {
     // -> t0
     codegen_push_lvalue(node->lhs);
     // -> t1
-    codegen_visit(node->rhs);
+    codegen_expr(node->rhs);
 
     codegen_pop_t1();
     codegen_pop_t0();
@@ -260,120 +260,10 @@ void codegen_visit(Node *node) {
     printf("  # ND_ASSIGN }\n");
     return;
 
-  case ND_RETURN:
-    printf("  # ND_RETURN LHS {\n");
-    codegen_visit(node->lhs);
-    printf("  # ND_RETURN LHS }\n");
-    codegen_pop_t0();
-
-    printf("  mv a0, t0\n");
-    codegen_epilogue(context);
-
-    return;
-
-  case ND_IF:
-    lindex = ++label_index;
-
-    printf("  # if {\n");
-
-    codegen_visit(node->lhs);
-    codegen_pop_t0();
-
-    printf("  beqz t0, .Lelse%03d\n", lindex);
-
-    // if {
-    codegen_visit(node->rhs);
-    codegen_pop_discard();
-    printf("  j .Lend%03d\n", lindex);
-    // }
-
-    // else {
-    printf(".Lelse%03d:\n", lindex);
-    if (node->node3) {
-      codegen_visit(node->node3);
-      codegen_pop_discard();
-    }
-    // }
-
-    printf(".Lend%03d:\n", lindex);
-
-    codegen_push_dummy();
-
-    printf("  # if }\n");
-    printf("\n");
-
-    return;
-
-  case ND_WHILE:
-    lindex = ++label_index;
-
-    printf(".Lbegin%03d:\n", lindex);
-
-    codegen_visit(node->lhs);
-    codegen_pop_t0();
-
-    printf("  beqz t0, .Lend%03d\n", lindex);
-
-    codegen_visit(node->rhs); // { ... }
-    codegen_pop_discard();
-
-    printf("  j .Lbegin%03d\n", lindex);
-
-    printf(".Lend%03d:\n", lindex);
-
-    codegen_push_dummy();
-
-    return;
-
-  case ND_FOR:
-    lindex = ++label_index;
-
-    if (node->lhs) {
-      codegen_visit(node->lhs);
-      codegen_pop_discard();
-    }
-
-    printf(".Lbegin%03d:\n", lindex);
-
-    if (node->rhs) {
-      codegen_visit(node->rhs);
-      codegen_pop_t0();
-      printf("  beqz t0, .Lend%03d\n", lindex);
-    }
-
-    if (node->node4) {
-      codegen_visit(node->node4); // { ... }
-      codegen_pop_discard();
-    }
-
-    // i++ みたいなとこ
-    if (node->node3) {
-      codegen_visit(node->node3);
-      codegen_pop_discard();
-    }
-
-    printf("j .Lbegin%03d\n", lindex);
-
-    printf(".Lend%03d:\n", lindex);
-
-    codegen_push_dummy();
-
-    return;
-
-  case ND_BLOCK:
-    for (NodeList *n = node->nodes; n; n = n->next) {
-      codegen_visit(n->node);
-      codegen_pop_discard();
-    }
-
-    codegen_push_dummy();
-
-    return;
-
   case ND_CALL: {
     int arg_count = 0;
     for (NodeList *n = node->nodes; n; n = n->next) {
-      codegen_visit(n->node);
+      codegen_expr(n->node);
       codegen_pop_t0();
       printf("  mv a%d, t0\n", arg_count++);
     }
@@ -389,6 +279,166 @@ void codegen_visit(Node *node) {
     printf("  addi sp, sp, -8\n");
     return;
   }
+
+  case ND_DEREF:
+    printf("  # ND_DEREF {\n");
+    // codegen_push_lvalue(node->lhs);
+    codegen_expr(node->lhs);
+    codegen_pop_t0();
+    printf("  ld t0, 0(t0)\n");
+    codegen_push_t0();
+    printf("  # ND_DEREF }\n");
+
+    return;
+
+  case ND_ADDR:
+    codegen_push_lvalue(node->lhs);
+
+    return;
+
+  case ND_GVAR:
+    printf("  lui t0, %%hi(%.*s)\n", node->gvar->len, node->gvar->name);
+    printf("  lw t0, %%lo(%.*s)(t0)\n", node->gvar->len, node->gvar->name);
+    codegen_push_t0();
+
+    return;
+
+  case ND_RETURN:
+  case ND_IF:
+  case ND_WHILE:
+  case ND_FOR:
+  case ND_BLOCK:
+  case ND_FUNCDECL:
+  case ND_VARDECL:
+  case ND_GVARDECL:
+    error_at(node->source_pos, "not an expression: %s",
+             node_kind_to_str(node->kind));
+  }
+}
+
+bool codegen(Node *node) {
+  int lindex;
+
+  switch (node->kind) {
+  case ND_NUM:
+  case ND_LT:
+  case ND_GE:
+  case ND_ADD:
+  case ND_SUB:
+  case ND_MUL:
+  case ND_DIV:
+  case ND_EQ:
+  case ND_NE:
+  case ND_LVAR:
+  case ND_ASSIGN:
+  case ND_CALL:
+  case ND_DEREF:
+  case ND_ADDR:
+  case ND_GVAR:
+    codegen_expr(node);
+    return true;
+
+  case ND_RETURN:
+    printf("  # ND_RETURN LHS {\n");
+    codegen_expr(node->lhs);
+    printf("  # ND_RETURN LHS }\n");
+    codegen_pop_t0();
+
+    printf("  mv a0, t0\n");
+    codegen_epilogue(context);
+
+    return false;
+
+  case ND_IF:
+    lindex = ++label_index;
+
+    printf("  # if {\n");
+
+    codegen_expr(node->lhs);
+    codegen_pop_t0();
+
+    printf("  beqz t0, .Lelse%03d\n", lindex);
+
+    // if {
+    if (codegen(node->rhs))
+      codegen_pop_discard();
+    printf("  j .Lend%03d\n", lindex);
+    // }
+
+    // else {
+    printf(".Lelse%03d:\n", lindex);
+    if (node->node3) {
+      codegen(node->node3);
+      codegen_pop_discard();
+    }
+    // }
+
+    printf(".Lend%03d:\n", lindex);
+
+    printf("  # if }\n");
+    printf("\n");
+
+    return false;
+
+  case ND_WHILE:
+    lindex = ++label_index;
+
+    printf(".Lbegin%03d:\n", lindex);
+
+    codegen_expr(node->lhs);
+    codegen_pop_t0();
+
+    printf("  beqz t0, .Lend%03d\n", lindex);
+
+    if (codegen(node->rhs))
+      codegen_pop_discard();
+
+    printf("  j .Lbegin%03d\n", lindex);
+
+    printf(".Lend%03d:\n", lindex);
+
+    return false;
+
+  case ND_FOR:
+    lindex = ++label_index;
+
+    if (node->lhs) {
+      if (codegen(node->lhs))
+        codegen_pop_discard();
+    }
+
+    printf(".Lbegin%03d:\n", lindex);
+
+    if (node->rhs) {
+      codegen_expr(node->rhs);
+      codegen_pop_t0();
+      printf("  beqz t0, .Lend%03d\n", lindex);
+    }
+
+    if (node->node4) {
+      if (codegen(node->node4)) // { ... }
+        codegen_pop_discard();
+    }
+
+    // i++ みたいなとこ
+    if (node->node3) {
+      codegen_expr(node->node3);
+      codegen_pop_discard();
+    }
+
+    printf("j .Lbegin%03d\n", lindex);
+
+    printf(".Lend%03d:\n", lindex);
+
+    return false;
+
+  case ND_BLOCK:
+    for (NodeList *n = node->nodes; n; n = n->next) {
+      if (codegen(n->node))
+        codegen_pop_discard();
+    }
+
+    return false;
 
   case ND_FUNCDECL:
     printf("\n");
@@ -408,37 +458,20 @@ void codegen_visit(Node *node) {
     }
 
     for (NodeList *n = node->nodes; n; n = n->next) {
-      codegen_visit(n->node);
-      codegen_pop_t0();
+      if (codegen(n->node))
+        codegen_pop_t0();
     }
 
     printf("  mv a0, zero\n");
     codegen_epilogue(context);
 
-    return;
-
-  case ND_DEREF:
-    printf("  # ND_DEREF {\n");
-    // codegen_push_lvalue(node->lhs);
-    codegen_visit(node->lhs);
-    codegen_pop_t0();
-    printf("  ld t0, 0(t0)\n");
-    codegen_push_t0();
-    printf("  # ND_DEREF }\n");
-
-    return;
-
-  case ND_ADDR:
-    codegen_push_lvalue(node->lhs);
-
-    return;
+    return false;
 
   case ND_VARDECL:
     // なにもしない
     printf("  # vardecl '%.*s' offset=%d\n", node->lvar->len, node->lvar->name,
            node->lvar->offset);
-    codegen_push_dummy();
-    return;
+    return false;
   }
 
   error_at(node->source_pos, "codegen not implemented: %s",
