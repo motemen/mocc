@@ -158,8 +158,6 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
 
 Node *parse_expr();
 
-bool parsing_sizeof_or_addr = false;
-
 static Node *parse_primary() {
   if (token_consume_reserved("(")) {
     Node *node = parse_expr();
@@ -211,10 +209,11 @@ static Node *parse_primary() {
     node->source_pos = tok->str;
     node->source_len = tok->len;
 
-    if (lvar->type->ty == ARRAY && !parsing_sizeof_or_addr) {
+    if (lvar->type->ty == ARRAY) {
       // 添字なしの配列のときは配列へのポインタを返す
-      return new_node(ND_ADDR, node, NULL);
-      // TODO: sizeof と & の場合は別の対応する
+      Node *ptr = new_node(ND_ADDR, node, NULL);
+      ptr->synthetic = true;
+      return ptr;
       // TODO: 添字ありの場合はまだ実装してない
       // と思ったけど a[3] を *(a+3) にするんなら特に対応いらんのかな
     }
@@ -284,7 +283,7 @@ Type *inspect_type(Node *node) {
       // int arr[10] なとき *arr は *(<addr of arr>) みたいにパーズするので
       // 普通にやると *a が int[10] という型に見えちゃうけど
       // ここは int を返したい…わけです
-      if (type->ptr_to->ty == ARRAY) {
+      if (node->lhs->synthetic && type->ptr_to->ty == ARRAY) {
         return type->ptr_to->ptr_to;
       }
       return type->ptr_to;
@@ -314,34 +313,34 @@ int sizeof_type(Type *type) {
 
 static Node *parse_unary() {
   if (token_consume_reserved("+")) {
-    parsing_sizeof_or_addr = false;
     return parse_primary();
   }
 
   if (token_consume_reserved("-")) {
-    parsing_sizeof_or_addr = false;
     return new_node(ND_SUB, new_node_num(0), parse_primary());
   }
 
   if (token_consume_reserved("*")) {
-    parsing_sizeof_or_addr = false;
     return new_node(ND_DEREF, parse_unary(), NULL);
   }
 
   if (token_consume_reserved("&")) {
-    parsing_sizeof_or_addr = true;
     Node *node = parse_unary();
-    parsing_sizeof_or_addr = false;
+    if (node->kind == ND_ADDR && node->synthetic) {
+      node = node->lhs;
+    }
     return new_node(ND_ADDR, node, NULL);
   }
 
   if (token_consume(TK_SIZEOF)) {
-    parsing_sizeof_or_addr = true;
     Node *node = parse_unary();
     // 式全体の型とかいうやつを知りたいですなあ
+    // ここで node が &a だったときに人工的な &a だった場合は a にしたい
+    if (node->kind == ND_ADDR && node->synthetic) {
+      node = node->lhs;
+    }
     Type *type = inspect_type(node);
     int size = sizeof_type(type);
-    parsing_sizeof_or_addr = false;
     return new_node_num(size);
   }
 
@@ -351,7 +350,6 @@ static Node *parse_unary() {
 static Node *parse_mul() {
   Node *node = parse_unary();
   for (;;) {
-    parsing_sizeof_or_addr = false;
     if (token_consume_reserved("*")) {
       node = new_node(ND_MUL, node, parse_unary());
     } else if (token_consume_reserved("/")) {
@@ -365,7 +363,6 @@ static Node *parse_mul() {
 static Node *parse_add() {
   Node *node = parse_mul();
   for (;;) {
-    parsing_sizeof_or_addr = false;
     if (token_consume_reserved("+")) {
       node = new_node(ND_ADD, node, parse_mul());
     } else if (token_consume_reserved("-")) {
@@ -379,7 +376,6 @@ static Node *parse_add() {
 static Node *parse_relational() {
   Node *node = parse_add();
   for (;;) {
-    parsing_sizeof_or_addr = false;
     if (token_consume_reserved("<")) {
       node = new_node(ND_LT, node, parse_add());
     } else if (token_consume_reserved(">")) {
@@ -397,7 +393,6 @@ static Node *parse_relational() {
 static Node *parse_equality() {
   Node *node = parse_relational();
   for (;;) {
-    parsing_sizeof_or_addr = false;
     if (token_consume_reserved("==")) {
       node = new_node(ND_EQ, node, parse_relational());
     } else if (token_consume_reserved("!=")) {
@@ -411,7 +406,6 @@ static Node *parse_equality() {
 static Node *parse_assign() {
   Node *node = parse_equality();
   if (token_consume_reserved("=")) {
-    parsing_sizeof_or_addr = false;
     node = new_node(ND_ASSIGN, node, parse_assign());
   }
   return node;

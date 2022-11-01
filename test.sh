@@ -4,11 +4,13 @@ riscv_cc=riscv64-$RISCV_HOST-gcc
 
 test_count=0
 
+$riscv_cc -c test/helper.c -o test/helper.o
+
 compile_program() {
   input="$1"
 
   ./9cv "$input" > tmp.s || return $?
-  $riscv_cc -static -o tmp tmp.s
+  $riscv_cc -static tmp.s test/helper.o -o tmp
 }
 
 run_program() {
@@ -38,7 +40,7 @@ assert_compile_error() {
   input="$2"
 
   compile_program "$input" 2> tmp.err
-  
+
   if [ $? -ne 1 ]; then
     (( test_count++ ))
     echo "not ok - $input -> compile error $error expected, but unexpectedly succeeded"
@@ -70,6 +72,21 @@ assert_program() {
   fi
 }
 
+assert_program_output() {
+  string="$1"
+  input="$2"
+
+  output=$(assert_program 0 "$input")
+
+  if echo "$output" | grep --silent "$string"; then
+    (( test_count++ ))
+    echo "ok - $input => has output '$string'"
+  else
+    (( test_count++ ))
+    echo "not ok - $input => output '$string' expected, but got '$output'"
+  fi
+}
+
 assert_expr() {
   assert_program "$1" "int main() { return $2 }"
 }
@@ -85,8 +102,6 @@ assert_program 1 'int main() { int a[2]; *a = 1; return *a; }'
 assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; return *(a + 1); }'
 assert_program 1 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p; } '
 
-
-exit
 # 通る
 assert_program 2 'int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *(a+1); } '
 
@@ -255,28 +270,9 @@ assert_program 0 'int f() {} int main() { int y; f(); y; }'
 assert_program 0 'int f() {} int main() { f(); }'
 assert_program 0 'int f() {} int main() { int y; f(); y=1; return 0; }'
 
-printf '#include <stdio.h>\nvoid foo() { printf("foo called!!!\\n"); } void foo2(int x, int y) { printf("foo2 called!! %%d %%d\\n", x, y); }' | $riscv_cc -xc - -c -o foo.o || exit 1
-
-./9cv "int main () { foo(); 0; }" > tmp.s || exit 1
-$riscv_cc -static tmp.s foo.o -o tmp
-if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo called!!!'; then
-  echo "calling foo() failed"
-  exit 1
-fi
-
-./9cv "int main() { foo2(42, 990+9); 0; }" > tmp.s || exit 1
-$riscv_cc -static tmp.s foo.o -o tmp
-if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 42 999'; then
-  echo "calling foo2(42, 990+9) failed"
-  exit 1
-fi
-
-./9cv "int main () { int a; a = 9; foo2(a, a*a); 0; }" > tmp.s || exit 1
-$riscv_cc -static tmp.s foo.o -o tmp
-if ! spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp | tee /dev/stdout | grep --silent 'foo2 called!! 9 81'; then
-  echo "calling foo2 failed"
-  exit 1
-fi
+assert_program_output "func1 called" "int main() { func1(); }"
+assert_program_output "func2 called 42 + 999 = 1041" "int main() { func2(42, 990+9); }"
+assert_program_output "func2 called 9 + 81 = 90" "int main() { int a; a = 9; func2(a, a*a); }"
 
 echo
 echo "1..$test_count"

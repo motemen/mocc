@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stddef.h>
 
 typedef struct Type Type;
@@ -68,6 +69,8 @@ struct Node {
 
   int val;    // used when kind == ND_NUM
   LVar *lvar; // used when kind == ND_LVAR
+
+  bool synthetic; // ソースコード由来でなく、コンパイラの都合で生成されたノード
 
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用
