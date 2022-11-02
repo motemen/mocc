@@ -195,7 +195,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    error("cannot tokenize: '%c'", *p);
+    error_at(p, "cannot tokenize: '%c'", *p);
   }
 
   new_token(TK_EOF, cur, p, 0);

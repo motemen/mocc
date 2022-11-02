@@ -20,7 +20,7 @@ not_ok() {
 compile_program() {
   input="$1"
 
-  ./9cv "$input" > tmp.s || return $?
+  ./9cv - <<<"$input" > tmp.s || return $?
   $riscv_cc -static tmp.s test/helper.o -o tmp
 }
 
