@@ -77,7 +77,8 @@ char *type_to_str(Type *type) {
     snprintf(buf, 100, "ptr to %s", type_to_str(type->base));
     return buf;
   } else if (type->ty == ARRAY) {
-    snprintf(buf, 100, "array of %s", type_to_str(type->base));
+    snprintf(buf, 100, "array[%ld] of %s", type->array_size,
+             type_to_str(type->base));
     return buf;
   }
 
@@ -657,7 +658,7 @@ Node *parse_stmt() {
       error("expected variable name");
     }
 
-    if (token_consume_reserved("[")) {
+    while (token_consume_reserved("[")) {
       int size = token_expect_number();
       token_expect("]");
 

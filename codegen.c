@@ -94,7 +94,8 @@ int label_index = 0;
 // または、ポインタの deref を計算してアドレスを push する
 void codegen_push_lvalue(Node *node) {
   if (node->kind == ND_LVAR) {
-    printf("  # address for '%.*s'\n", node->lvar->len, node->lvar->name);
+    printf("  # (lvalue) address for '%.*s'\n", node->lvar->len,
+           node->lvar->name);
     printf("  addi t0, fp, -%d\n", node->lvar->offset);
     codegen_push_t0();
     return;
@@ -104,13 +105,14 @@ void codegen_push_lvalue(Node *node) {
   // y が配列のときは *y[0] みたいな感じであつかう
   // **z -> (*z) の値をアドレスとして push する
   if (node->kind == ND_DEREF) {
-    printf("  # deref\n");
+    printf("  # (lvalue) deref address of (%s)\n",
+           type_to_str(typeof_node(node->lhs)));
     codegen_expr(node->lhs);
     return;
   }
 
   if (node->kind == ND_GVAR) {
-    printf("  # address for global variable '%.*s'\n", node->gvar->len,
+    printf("  # (lvalue) address for global variable '%.*s'\n", node->gvar->len,
            node->gvar->name);
     printf("  lui t0, %%hi(%.*s)\n", node->gvar->len, node->gvar->name);
     printf("  addi t0, t0, %%lo(%.*s)\n", node->gvar->len, node->gvar->name);
@@ -316,18 +318,18 @@ void codegen_expr(Node *node) {
   }
 
   case ND_DEREF: {
-    int size = 0;
-    Type *type = typeof_node(node->lhs);
-    // FIXME: ここ型でみるべき？ 変数が ARRAY である、というふうに見るべきでは
-    if (type->ty == ARRAY) {
-      // *a とされたとき、変数 a // が差しているメモリ上の値が
-      // ここで得たいアドレスではなく a 自体のアドレスを知りたい
-      codegen_push_lvalue(node->lhs);
-      size = sizeof_type(type->base);
-    } else {
-      codegen_expr(node->lhs);
-      size = sizeof_type(type->base);
+    codegen_expr(node->lhs);
+
+    if (typeof_node(node)->ty == ARRAY) {
+      // deref した結果が配列の場合はさらにポインタとしてあつかうので
+      // push されたアドレスをそのまま返す
+      // ややこしすぎでは。なんか別の箇所にまとめられそう
+      return;
     }
+
+    Type *type = typeof_node(node->lhs);
+    int size = sizeof_type(type->base);
+
     codegen_pop_t0();
 
     printf("  # deref to get (%s)\n", type_to_str(type->base));
