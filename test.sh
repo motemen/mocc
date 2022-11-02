@@ -111,6 +111,8 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 111 'int main() { int x; int y; x = 1; y = 0; if (x || y) return 111; }'
+
 assert_program 101 'int main() { int a[100]; *a = 1; *(a+99) = 100; return a[0] + a[99]; }'
 
 assert_program 100 'int main() { int mat[5][3]; *(*(mat+3)+2) = 100; return *(*(mat+3)+2); }'

@@ -64,6 +64,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_GVAR";
   case ND_STRING:
     return "ND_STRING";
+  case ND_LOGOR:
+    return "ND_LOGOR";
   }
 
   return "(unknown)";
@@ -224,7 +226,8 @@ static StrLit *add_str_lit(char *str, int len) {
 //                | vardecl ";"
 //    vardecl     = type ident ("[" num "]")?
 //    expr        = assign
-//    assign      = equality ("=" assign)?
+//    assign      = or ("=" assign)?
+//    or          = equality ("||" equality)*
 //    equality    = relational ("==" relational | "!=" relational)*
 //    relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
 //    add         = mul ("+" mul | "-" mul)*
@@ -520,8 +523,19 @@ static Node *parse_equality() {
   }
 }
 
-static Node *parse_assign() {
+static Node *parse_or() {
   Node *node = parse_equality();
+  for (;;) {
+    if (token_consume_reserved("||")) {
+      node = new_node(ND_LOGOR, node, parse_equality());
+    } else {
+      return node;
+    }
+  }
+}
+
+static Node *parse_assign() {
+  Node *node = parse_or();
   if (token_consume_reserved("=")) {
     node = new_node(ND_ASSIGN, node, parse_assign());
   }

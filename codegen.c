@@ -234,6 +234,18 @@ void codegen_expr(Node *node) {
     codegen_push_t0();
     return;
 
+  case ND_LOGOR:
+    codegen_expr(node->lhs); // -> t0
+    codegen_expr(node->rhs); // -> t1
+
+    codegen_pop_t1();
+    codegen_pop_t0();
+
+    printf("  or t0, t0, t1\n");
+
+    codegen_push_t0();
+    return;
+
   case ND_LVAR:
     // codegen_push_lvalue(node);
     // codegen_pop_t0();
@@ -411,6 +423,7 @@ bool codegen(Node *node) {
   case ND_DIV:
   case ND_EQ:
   case ND_NE:
+  case ND_LOGOR:
   case ND_LVAR:
   case ND_ASSIGN:
   case ND_CALL:
