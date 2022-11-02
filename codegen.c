@@ -294,8 +294,12 @@ void codegen_expr(Node *node) {
     int arg_count = 0;
     for (NodeList *n = node->nodes; n; n = n->next) {
       codegen_expr(n->node);
+      arg_count++;
+    }
+
+    while (arg_count > 0) {
       codegen_pop_t0();
-      printf("  mv a%d, t0\n", arg_count++);
+      printf("  mv a%d, t0\n", --arg_count);
     }
 
     // これいるか？？ sp はどういう状態で引き渡せばいいんだ
@@ -359,6 +363,13 @@ void codegen_expr(Node *node) {
 
     return;
 
+  case ND_STRING:
+    printf("  lui t0, %%hi(.LC%d)\n", node->val);
+    printf("  addi t0, t0, %%lo(.LC%d)\n", node->val);
+    codegen_push_t0();
+
+    return;
+
   case ND_RETURN:
   case ND_IF:
   case ND_WHILE:
@@ -367,9 +378,22 @@ void codegen_expr(Node *node) {
   case ND_FUNCDECL:
   case ND_VARDECL:
   case ND_GVARDECL:
-    error_at(node->source_pos, "not an expression: %s",
-             node_kind_to_str(node->kind));
+    break;
   }
+
+  error_at(node->source_pos, "not an expression: %s",
+           node_kind_to_str(node->kind));
+}
+
+void codegen_preamble() {
+  printf("  .section .rodata\n");
+  for (StrLit *lit = str_lits; lit; lit = lit->next) {
+    printf(".LC%d:\n", lit->index);
+    printf("  .string \"%.*s\"\n", lit->len, lit->str);
+  }
+
+  printf("\n");
+  printf("  .global main\n");
 }
 
 bool codegen(Node *node) {
@@ -391,6 +415,7 @@ bool codegen(Node *node) {
   case ND_DEREF:
   case ND_ADDR:
   case ND_GVAR:
+  case ND_STRING:
     codegen_expr(node);
     return true;
 

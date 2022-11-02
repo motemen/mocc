@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     error("not all tokens are consumed");
   }
 
-  printf("  .global main\n");
+  codegen_preamble();
 
   for (int i = 0; code[i]; i++) {
     if (codegen(code[i]))

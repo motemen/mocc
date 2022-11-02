@@ -6,6 +6,7 @@ typedef struct NodeList NodeList;
 typedef struct Node Node;
 typedef struct LVar LVar;
 typedef struct GVar GVar;
+typedef struct StrLit StrLit;
 
 struct Type {
   enum { CHAR, INT, PTR, ARRAY } ty;
@@ -28,6 +29,14 @@ struct GVar {
   char *name;
   int len; // name の長さ
   Type *type;
+};
+
+// 文字列リテラル!!!
+struct StrLit {
+  StrLit *next;
+  char *str;
+  int len;
+  int index;
 };
 
 typedef enum {
@@ -54,6 +63,7 @@ typedef enum {
   ND_VARDECL, //
   ND_GVARDECL,
   ND_GVAR,
+  ND_STRING,
 } NodeKind;
 
 struct Node {
@@ -78,6 +88,7 @@ struct Node {
   int name_len;
 
   int val;    // used when kind == ND_NUM
+              // あと ND_STRING のとき str_lits の index
   LVar *lvar; // ND_LVAR || ND_VARDECL
   GVar *gvar; // ND_VARDECL かつトップレベル
 
@@ -99,5 +110,5 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 char *type_to_str(Type *type);
 
 extern LVar *locals;
-
+extern StrLit *str_lits;
 extern char *context;

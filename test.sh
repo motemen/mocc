@@ -87,11 +87,16 @@ assert_program_output() {
   string="$1"
   input="$2"
 
-  output=$(assert_program 0 "$input")
+  output=$(run_program "$input")
+
+  if [ $? -ne 0 ]; then
+    not_ok "program '$input' unexpectedly failed: $output"
+    return
+  fi
 
   if echo "$output" | grep --silent "$string"; then
     (( test_count++ ))
-    ok "$input => has output '$string'"
+    ok "$input => has output '$string': $output"
   else
     (( test_count++ ))
     not_ok "$input => output '$string' expected, but got '$output'"
@@ -105,6 +110,15 @@ assert_expr() {
 assert() {
   assert_program "$1" "int main() { $2 }"
 }
+
+assert_program 4 'int add(int x, int y) { return x + y; } int inc(int x) { return x + 1; } int main() { return add(inc(0), inc(inc(inc(0)))); }'
+
+assert_program 120 'int fact(int n) { if (n == 1) return 1; return n * fact(n-1); } int main() { return fact(5); }'
+assert_program_output 'id=5' 'int id(int n) { return n; } int main() { printf("id=%d\n", id(5)); }'
+assert_program_output 'fact=120' 'int fact(int n) { if (n == 1) return 1; return n * fact(n-1); } int main() { printf("fact=%d\n", fact(5)); }'
+
+assert_program 72 'int main() { char *s; s = "Hello, world!"; return s[0]; }'
+assert_program 101 'int main() { char *s; s = "Hello, world!"; return s[1]; }'
 
 assert_program 0 'int main() { int arr[5]; arr[4]; }'
 assert_program 0 'int main() { int arr[5]; arr[4] = 0; }'

@@ -13,6 +13,7 @@ typedef enum {
   TK_EOF,
   TK_TYPE,
   TK_SIZEOF,
+  TK_STRING,
 } TokenKind;
 
 typedef struct Token Token;
@@ -33,15 +34,11 @@ extern Token *token;
 Token *tokenize(char *p);
 
 bool token_consume(TokenKind kind);
-
+Token *token_advance(TokenKind kind);
 bool token_consume_reserved(char *op);
-
 bool token_consume_type(char *type);
-
 bool token_at_eof();
-
 void token_expect(char *op);
-
 int token_expect_number();
 
 Token *token_consume_ident();

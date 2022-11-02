@@ -7,6 +7,7 @@
 
 Token *token;
 
+// TODO: token_advance にする
 bool token_consume(TokenKind kind) {
   if (token->kind != kind) {
     return false;
@@ -14,6 +15,16 @@ bool token_consume(TokenKind kind) {
 
   token = token->next;
   return true;
+}
+
+Token *token_advance(TokenKind kind) {
+  if (token->kind != kind) {
+    return NULL;
+  }
+
+  Token *result = token;
+  token = token->next;
+  return result;
 }
 
 // TK_RESERVED なものがあれば進んで true、なかったら false
@@ -94,6 +105,16 @@ Token *tokenize(char *p) {
   while (*p) {
     if (isspace(*p)) {
       p++;
+      continue;
+    }
+
+    if (*p == '"') {
+      char *end = p + 1;
+      while (*end != '"') {
+        end++;
+      }
+      cur = new_token(TK_STRING, cur, p + 1, end - p - 1);
+      p = end + 1;
       continue;
     }
 

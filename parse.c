@@ -12,6 +12,7 @@
 LVar *locals;
 GVar *globals;
 char *context; // いまみてる関数名
+StrLit *str_lits;
 
 char *node_kind_to_str(NodeKind kind) {
   switch (kind) {
@@ -61,6 +62,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_GVARDECL";
   case ND_GVAR:
     return "ND_GVAR";
+  case ND_STRING:
+    return "ND_STRING";
   }
 
   return "(unknown)";
@@ -98,7 +101,7 @@ static Node *new_node_num(int val) {
   return node;
 }
 
-LVar *find_lvar(char *context, char *name, int len) {
+static LVar *find_lvar(char *context, char *name, int len) {
   assert(context != NULL);
 
   LVar *last_var = locals;
@@ -112,7 +115,7 @@ LVar *find_lvar(char *context, char *name, int len) {
   return NULL;
 }
 
-LVar *add_lvar(char *context, char *name, int len, Type *type) {
+static LVar *add_lvar(char *context, char *name, int len, Type *type) {
   assert(context != NULL);
 
   LVar *last_var = locals;
@@ -148,7 +151,7 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
   return var;
 }
 
-GVar *find_gvar(char *name, int len) {
+static GVar *find_gvar(char *name, int len) {
   for (GVar *var = globals; var; var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
       return var;
@@ -158,7 +161,7 @@ GVar *find_gvar(char *name, int len) {
   return NULL;
 }
 
-GVar *add_gvar(char *name, int len, Type *type) {
+static GVar *add_gvar(char *name, int len, Type *type) {
   GVar *last_var = globals;
   for (GVar *var = globals; var; last_var = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
@@ -178,6 +181,30 @@ GVar *add_gvar(char *name, int len, Type *type) {
   }
 
   return var;
+}
+
+static StrLit *add_str_lit(char *str, int len) {
+  StrLit *last = str_lits;
+  int index = 0;
+  for (StrLit *lit = str_lits; lit; last = lit, lit = lit->next) {
+    if (lit->len == len && !strncmp(lit->str, str, len)) {
+      return lit;
+    }
+    index++;
+  }
+
+  StrLit *lit = calloc(1, sizeof(StrLit));
+  lit->str = str;
+  lit->len = len;
+  lit->index = index;
+
+  if (last) {
+    last->next = lit;
+  } else {
+    str_lits = lit;
+  }
+
+  return lit;
 }
 
 ///// Parser /////
@@ -208,8 +235,10 @@ GVar *add_gvar(char *name, int len, Type *type) {
 //                | postfix
 //    postfix     = primary ("[" expr "]")*
 //    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
+//                | string
 //    ident	      = /[a-z][a-z0-9]*/
 //    num         = [0-9]+
+//    string      = /"[^"]*"/
 
 Node *parse_expr();
 
@@ -284,6 +313,17 @@ static Node *parse_primary() {
     }
 
     error("variable not found: '%.*s'", tok->len, tok->str);
+  }
+
+  Token *tok_str = token_advance(TK_STRING);
+  if (tok_str) {
+    StrLit *str_lit = add_str_lit(tok_str->str, tok_str->len);
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_STRING;
+    node->val = str_lit->index;
+    node->source_pos = tok_str->str;
+    node->source_len = tok_str->len;
+    return node;
   }
 
   int val = token_expect_number();
