@@ -58,7 +58,7 @@ assert_compile_error() {
     return
   fi
 
-  if grep "$error" tmp.err; then
+  if grep --silent "$error" tmp.err; then
     (( test_count++ ))
     ok "$input -> compile error $error"
   else
@@ -105,6 +105,41 @@ assert_expr() {
 assert() {
   assert_program "$1" "int main() { $2 }"
 }
+
+assert_program 0 'int main() { int arr[5]; arr[4]; }'
+assert_program 0 'int main() { int arr[5]; arr[4] = 0; }'
+
+assert_program 3 'int main() { int x; x = 3; int *y; y = &x; return *y; }'
+
+assert_program 0 'int main() { int arr[10]; int x; x = arr[9]; }'
+assert_program 0 'int main() { int arr[2]; int i; for (i = 0; i < 2; i = i+1) { arr[i] = 0; } return arr[0]; }'
+assert_program 0 'int main() { int arr[3]; int i; for (i = 0; i < 3; i = i+1) { arr[i] = 0; } return arr[0]; }'
+assert_program 0 'int main() { int arr[4]; int i; for (i = 0; i < 4; i = i+1) { arr[i] = 0; } return arr[0]; }'
+
+assert_program 0 'int main() { int arr[5]; int i; for (i = 0; i < 5; i = i+1) ; return arr[0]; }'
+assert_program 0 'int main() { int arr[5]; return arr[0]; }'
+assert_program 0 'int main() { int arr[5]; arr[2] = 0; }'
+assert_program 0 'int main() { int arr[5]; arr[3] = 0; }'
+# x なんでだろ～
+assert_program 0 'int main() { int arr[5]; int i; for (i = 0; i < 5; i = i+1) { arr[i] = 0; } return arr[0]; }'
+
+assert_program 18 'int main() { int arr[10]; arr[1] = arr[0] = 9; return arr[0] + arr[1]; }'
+assert_program 18 'int main() { int arr[10]; arr[0] = arr[1] = 9; return arr[0] + arr[1]; }'
+
+assert_program 18 'int main() { int arr[10]; arr[0] = arr[1] = 9; return arr[1] + arr[0]; }'
+assert_program 2 'int main() { int arr[10]; arr[0] = arr[1] = 1; arr[2] = arr[1] + arr[0]; return arr[2]; }'
+assert_program 0 'int main() { int fib[10]; fib[0] = fib[1] = 1; int i; for (i = 2; i < 10; i = i+1) { fib[i] = fib[i-1] + fib[i-2]; } int x; x = fib[9]; }'
+assert_program 55 'int main() { int fib[10]; fib[0] = fib[1] = 1; int i; for (i = 2; i < 10; i = i+1) { fib[i] = fib[i-1] + fib[i-2]; } return fib[9]; }'
+
+assert_program 5 'int main() { char x[3]; x[0] = 5; x[1] = 9; x[2] = 13; return x[0]; }'
+assert_program 9 'int main() { char x[3]; x[0] = 5; x[1] = 9; x[2] = 13; return x[1]; }'
+assert_program 13 'int main() { char x[3]; x[0] = 5; x[1] = 9; x[2] = 13; return x[2]; }'
+
+assert_program 5 'int main() { char x[3]; x[2] = 13; x[1] = 9; x[0] = 5; return x[0]; }'
+assert_program 9 'int main() { char x[3]; x[2] = 13; x[1] = 9; x[0] = 5; return x[1]; }'
+assert_program 13 'int main() { char x[3]; x[2] = 13; x[1] = 9; x[0] = 5; return x[2]; }'
+
+assert_program 13 'int main() { char x[3]; x[2] = 13; x[1] = 9; x[0] = 5; return x[2]; }'
 
 assert_program 16 'int main() { int a[4]; return sizeof(a); }'
 assert_program 8 'int main() { int a[4]; return sizeof(&a); }'
@@ -165,21 +200,11 @@ assert_program 40 'int main() { int a[10]; return sizeof a; }'
 assert_program 40 'int main() { int a[10]; return sizeof(a); }'
 assert_program 4 'int main() { int a[10]; return sizeof(*a); }'
 
-$riscv_cc -c test/helper.c -o test/helper.o || exit 1
-./9cv 'int main() { int *p; alloc4(&p, 1, 3, 5, 7); return *(p+2); }' > tmp.s || exit 1
-$riscv_cc -static tmp.s test/helper.o -o tmp || exit 1
-spike "$RISCV/riscv64-$RISCV_HOST/bin/pk" ./tmp
-if [ "$?" -ne 5 ]; then
-  echo "expected 5 but got $?"
-  exit 1
-fi
+assert_program 5 'int main() { int *p; alloc4(&p, 1, 3, 5, 7); return *(p+2); }'
 
 assert_program 4 'int main() { int x; return sizeof(x); }'
 assert_program 8 'int main() { int *ptr; return sizeof(ptr); }'
 assert_program 8 'int main() { int x; return sizeof(&x); }'
-
-# おかしなテストだった
-assert_program 3 'int main() { int x; x = 3; int y; y = &x; return *y; }'
 
 assert_program 3 'int main() { int x; int *y; y = &x; *y = 3; return x; }'
 assert_program 5 'int main() { int x; int *p; p = &x; x = 5; return *p; }'

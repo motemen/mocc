@@ -22,7 +22,7 @@ void codegen_pop_t1() {
   printf("  # pop t1 {{{\n");
   printf("  ld t1, 0(sp)\n");
   printf("  addi sp, sp, 8\n");
-  printf("  # }}}");
+  printf("  # }}}\n");
 }
 
 void codegen_pop_discard() {
@@ -52,8 +52,7 @@ static int max_lvar_offset(const char *context) {
     return 0;
   }
 
-  return last_lvar->offset +
-         (last_lvar->type->ty == ARRAY ? last_lvar->type->array_size * 8 : 8);
+  return last_lvar->offset;
 }
 
 static void codegen_prologue(char *context) {
@@ -249,7 +248,7 @@ void codegen_expr(Node *node) {
     return;
 
   case ND_ASSIGN:
-    printf("  # ND_ASSIGN {\n");
+    printf("  # ND_ASSIGN {{{\n");
     // -> t0
     codegen_push_lvalue(node->lhs);
     // -> t1
@@ -270,15 +269,25 @@ void codegen_expr(Node *node) {
     // fprintf(stderr, "  # type: %d", t->ty);
     // fprintf(stderr, "  # sizeof: %d\n", sizeof_type(typeof_node(node->lhs)));
 
-    if (sizeof_type(typeof_node(node->lhs)) == 1) {
+    switch (sizeof_type(typeof_node(node->lhs))) {
+    case 1:
       printf("  sb t1, 0(t0)\n");
-    } else {
+      break;
+    case 4:
+      printf("  sw t1, 0(t0)\n");
+      break;
+    case 8:
       printf("  sd t1, 0(t0)\n");
+      break;
+    default:
+      error("unknown size of variable: (%s)",
+            type_to_str(typeof_node(node->lhs)));
     }
-    printf("  mv t0, t1\n");
 
+    printf("  mv t0, t1\n");
     codegen_push_t0();
-    printf("  # ND_ASSIGN }\n");
+
+    printf("  # }}} ND_ASSIGN\n");
     return;
 
   case ND_CALL: {
@@ -295,26 +304,47 @@ void codegen_expr(Node *node) {
     printf("  addi sp, sp, 8\n");
 
     // 結果は a0 に入っているよな
-    printf("  # push a0\n");
+    printf("  # push return value (a0) {{{\n");
     printf("  sd a0, -8(sp)\n");
     printf("  addi sp, sp, -8\n");
+    printf("  # }}}\n");
     return;
   }
 
-  case ND_DEREF:
-    printf("  # ND_DEREF {\n");
-    // codegen_push_lvalue(node->lhs);
-    if (typeof_node(node->lhs)->ty == ARRAY) {
+  case ND_DEREF: {
+    int size = 0;
+    Type *type = typeof_node(node->lhs);
+    // FIXME: ここ型でみるべき？ 変数が ARRAY である、というふうに見るべきでは
+    if (type->ty == ARRAY) {
+      // *a とされたとき、変数 a // が差しているメモリ上の値が
+      // ここで得たいアドレスではなく a 自体のアドレスを知りたい
       codegen_push_lvalue(node->lhs);
+      size = sizeof_type(type->base);
     } else {
       codegen_expr(node->lhs);
+      size = sizeof_type(type->base);
     }
     codegen_pop_t0();
-    printf("  ld t0, 0(t0)\n");
+
+    printf("  # deref to get (%s)\n", type_to_str(type->base));
+    switch (size) {
+    case 1:
+      printf("  lb t0, 0(t0)\n");
+      break;
+    case 4:
+      printf("  lw t0, 0(t0)\n");
+      break;
+    case 8:
+      printf("  ld t0, 0(t0)\n");
+      break;
+
+    default:
+      error("unknown size of deref: (%s)", type_to_str(typeof_node(node->lhs)));
+    }
     codegen_push_t0();
-    printf("  # ND_DEREF }\n");
 
     return;
+  }
 
   case ND_ADDR:
     // TODO: ARRAY のときなんかやる
@@ -496,8 +526,8 @@ bool codegen(Node *node) {
 
   case ND_VARDECL:
     // なにもしない
-    printf("  # vardecl '%.*s' offset=%d\n", node->lvar->len, node->lvar->name,
-           node->lvar->offset);
+    printf("  # vardecl '%.*s' offset=%d size=%d\n", node->lvar->len,
+           node->lvar->name, node->lvar->offset, sizeof_type(node->lvar->type));
     return false;
 
   case ND_GVARDECL:

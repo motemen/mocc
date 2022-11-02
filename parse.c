@@ -123,11 +123,12 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
       error("variable already defined: '%.*s'", len, name);
     }
     if (strcmp(var->context, context) == 0) {
-      if (var->type->ty == ARRAY) {
-        offset += 8 * var->type->array_size;
-      } else {
-        offset += 8;
-      }
+      offset = var->offset;
+      // if (var->type->ty == ARRAY) {
+      //   offset += 8 * var->type->array_size;
+      // } else {
+      //   offset += 8;
+      // }
     }
   }
 
@@ -135,7 +136,7 @@ LVar *add_lvar(char *context, char *name, int len, Type *type) {
   var->name = name;
   var->len = len;
   var->context = context;
-  var->offset = offset;
+  var->offset = offset + (sizeof_type(type) + 7) / 8 * 8;
   var->type = type;
 
   if (last_var) {
