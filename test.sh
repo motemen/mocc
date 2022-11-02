@@ -111,6 +111,26 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 56 'int v; int main() { v = 3456; return v - 3400; }'
+assert_program 0 'int n; int main() { n = 222; }'
+assert_program 0 'int a[64]; int main() { a[0] = 222; }'
+assert_program 0 'int a[64]; int main() { a[10] = 222; }'
+assert_program 0 'int a[64]; int main() { a[63] = 222; }'
+
+assert_program 0 '
+int map[64];
+int xy_to_index(int x, int y) { return y * 8 + x; }
+int main() {
+  int x;
+  int y;
+  for (y = 0; y < 8; y = y+1) {
+    for (x = 0; x < 8; x = x+1) {
+      map[xy_to_index(x, y)] = x + y;
+    }
+  }
+}
+'
+
 assert_program 111 'int main() { int x; int y; x = 1; y = 0; if (x || y) return 111; }'
 
 assert_program 101 'int main() { int a[100]; *a = 1; *(a+99) = 100; return a[0] + a[99]; }'

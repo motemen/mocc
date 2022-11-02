@@ -365,14 +365,19 @@ void codegen_expr(Node *node) {
   }
 
   case ND_ADDR:
-    // TODO: ARRAY のときなんかやる
     codegen_push_lvalue(node->lhs);
 
     return;
 
   case ND_GVAR:
-    printf("  lui t0, %%hi(%.*s)\n", node->gvar->len, node->gvar->name);
-    printf("  lw t0, %%lo(%.*s)(t0)\n", node->gvar->len, node->gvar->name);
+    if (node->gvar->type->ty == ARRAY) {
+      // lvar と同様なんだけどこれこんなにあちこちでやるもんなのか？
+      printf("  lui t0, %%hi(%.*s)\n", node->gvar->len, node->gvar->name);
+      printf("  addi t0, t0, %%lo(%.*s)\n", node->gvar->len, node->gvar->name);
+    } else {
+      printf("  lui t0, %%hi(%.*s)\n", node->gvar->len, node->gvar->name);
+      printf("  lw t0, %%lo(%.*s)(t0)\n", node->gvar->len, node->gvar->name);
+    }
     codegen_push_t0();
 
     return;
