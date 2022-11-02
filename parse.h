@@ -81,9 +81,6 @@ struct Node {
   LVar *lvar; // ND_LVAR || ND_VARDECL
   GVar *gvar; // ND_VARDECL かつトップレベル
 
-  // ソースコード由来でなく、コンパイラの都合で生成されたノード
-  bool is_synthetic_ptr;
-
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用
 };

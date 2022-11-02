@@ -264,17 +264,10 @@ static Node *parse_primary() {
       node->source_pos = tok->str;
       node->source_len = tok->len;
 
-      if (lvar->type->ty == ARRAY) {
-        // 添字なしの配列のときは配列へのポインタを返す
-        // int a[100]; のとき a は int へのポインタ int * だが
-        // &a は int[100] へのポインタ int (*)[100] になることに注意!!!
-        // ってことはここで人工的に &a を返すのはよくないなあ
-        // Node *ptr = new_node(ND_ADDR, node, NULL);
-        // ptr->is_synthetic_ptr = true;
-        // return ptr;
-        // TODO: 添字ありの場合はまだ実装してない
-        // と思ったけど a[3] を *(a+3) にするんなら特に対応いらんのかな
-      }
+      // ここで生の配列を見つけた場合は &a を返す、というコードを書いていたが
+      // int a[100]; のとき a は int へのポインタ int * だが
+      // &a は int[100] へのポインタ int (*)[100] になり
+      // 別物なのでやめた
 
       return node;
     }
@@ -395,8 +388,6 @@ static Node *parse_postfix() {
   while (token_consume_reserved("[")) {
     Node *expr = parse_expr();
     token_expect("]");
-    // TODO: node->synthetic のときに剥がす、というようなことをしてないので
-    // *(a+3) と *(&a+3) が区別できないんじゃないかなあ
     node = new_node(ND_DEREF, new_node(ND_ADD, node, expr), NULL);
   }
 
@@ -418,19 +409,11 @@ static Node *parse_unary() {
 
   if (token_consume_reserved("&")) {
     Node *node = parse_unary();
-    if (node->kind == ND_ADDR && node->is_synthetic_ptr) {
-      node = node->lhs;
-    }
     return new_node(ND_ADDR, node, NULL);
   }
 
   if (token_consume(TK_SIZEOF)) {
     Node *node = parse_unary();
-    // 式全体の型とかいうやつを知りたいですなあ
-    // ここで node が &a だったときに人工的な &a だった場合は a にしたい
-    if (node->kind == ND_ADDR && node->is_synthetic_ptr) {
-      node = node->lhs;
-    }
     Type *type = typeof_node(node);
     int size = sizeof_type(type);
     return new_node_num(size);

@@ -166,14 +166,7 @@ void codegen_expr(Node *node) {
     // TODO: ltype しかみてないけど rtype もみたいよね
     Type *ltype = typeof_node(node->lhs);
     if (ltype->ty == PTR || ltype->ty == ARRAY) {
-      if (node->lhs->is_synthetic_ptr) {
-        // int a[10]; な a が &a に変換されてやってきたので
-        // ltype = pointer to array of int みたいになってる
-        // ので2回たどる
-        ptr_size = sizeof_type(ltype->base->base);
-      } else {
-        ptr_size = sizeof_type(ltype->base);
-      }
+      ptr_size = sizeof_type(ltype->base);
     }
 
     codegen_expr(node->lhs); // -> t0
