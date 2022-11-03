@@ -111,6 +111,8 @@ assert() {
   assert_program "$1" "int main() { $2 }"
 }
 
+assert_program 0 'int main() { if (0) { } else { } return 0; } '
+
 assert_program 56 'int v; int main() { v = 3456; return v - 3400; }'
 assert_program 0 'int n; int main() { n = 222; }'
 assert_program 0 'int a[64]; int main() { a[0] = 222; }'

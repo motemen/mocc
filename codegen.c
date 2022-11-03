@@ -256,7 +256,23 @@ void codegen_expr(Node *node) {
       // sizeof, & の場合だけ例外だがそれはそちら側で処理されてる。はず。
       printf("  add t0, fp, -%d\n", node->lvar->offset);
     } else {
-      printf("  ld t0, -%d(fp)\n", node->lvar->offset);
+      int size = sizeof_type(node->lvar->type);
+
+      switch (size) {
+      case 1:
+        printf("  lb t0, -%d(fp)\n", node->lvar->offset);
+        break;
+      case 4:
+        printf("  lw t0, -%d(fp)\n", node->lvar->offset);
+        break;
+      case 8:
+        printf("  ld t0, -%d(fp)\n", node->lvar->offset);
+        break;
+
+      default:
+        error("unknown size of lvar: (%s)",
+              type_to_str(typeof_node(node->lhs)));
+      }
     }
     codegen_push_t0();
     return;
@@ -450,39 +466,40 @@ bool codegen(Node *node) {
 
     return false;
 
-  case ND_IF:
-    lindex = ++label_index;
+  case ND_IF: {
+    int lindex = ++label_index;
 
-    printf("  # if {\n");
+    printf("  # ND_IF {{{\n");
 
     codegen_expr(node->lhs);
     codegen_pop_t0();
 
     printf("  beqz t0, .Lelse%03d\n", lindex);
 
-    // if {
+    printf("  # if {\n");
     if (codegen(node->rhs))
       codegen_pop_discard();
     printf("  j .Lend%03d\n", lindex);
-    // }
+    printf("  # if }\n");
 
-    // else {
+    printf("  # else {\n");
     printf(".Lelse%03d:\n", lindex);
     if (node->node3) {
-      codegen(node->node3);
-      codegen_pop_discard();
+      if (codegen(node->node3))
+        codegen_pop_discard();
     }
-    // }
+    printf("  # else }\n");
 
     printf(".Lend%03d:\n", lindex);
 
-    printf("  # if }\n");
+    printf("  # ND_IF }}}\n");
     printf("\n");
 
     return false;
+  }
 
-  case ND_WHILE:
-    lindex = ++label_index;
+  case ND_WHILE: {
+    int lindex = ++label_index;
 
     printf(".Lbegin%03d:\n", lindex);
 
@@ -499,9 +516,10 @@ bool codegen(Node *node) {
     printf(".Lend%03d:\n", lindex);
 
     return false;
+  }
 
-  case ND_FOR:
-    lindex = ++label_index;
+  case ND_FOR: {
+    int lindex = ++label_index;
 
     if (node->lhs) {
       if (codegen(node->lhs))
@@ -532,6 +550,7 @@ bool codegen(Node *node) {
     printf(".Lend%03d:\n", lindex);
 
     return false;
+  }
 
   case ND_BLOCK:
     for (NodeList *n = node->nodes; n; n = n->next) {
