@@ -37,12 +37,12 @@ static void codegen_push_t0() {
   printf("  # }}}\n");
 }
 
-static int max_lvar_offset(const char *context) {
+static int max_lvar_offset(Node *scope) {
   int max = 0;
 
   LVar *last_lvar = NULL;
   for (LVar *lvar = locals; lvar; lvar = lvar->next) {
-    if (strcmp(context, lvar->context) == 0) {
+    if (lvar->scope == scope) {
       // 常にあとのほうが offset でかいはずなのでこれでよい
       last_lvar = lvar;
     }
@@ -55,19 +55,19 @@ static int max_lvar_offset(const char *context) {
   return last_lvar->offset;
 }
 
-static void codegen_prologue(char *context) {
+static void codegen_prologue(Node *scope) {
   printf("  # Prologue\n");
   printf("  sd ra, 0(sp)\n");  // ra を保存
   printf("  sd fp, -8(sp)\n"); // fp を保存
   printf("  addi fp, sp, -8\n");
   // スタックポインタを移動。関数を抜けるまで動かない
-  printf("  addi sp, sp, -%d\n",
-         max_lvar_offset(context) + 8 /* for saved fp */);
+  // max_lvar_offset は Node にもたせても良さそうな
+  printf("  addi sp, sp, -%d\n", max_lvar_offset(scope) + 8 /* for saved fp */);
   printf("\n");
 }
 
 // a0 に返り値を設定してから呼ぶこと
-static void codegen_epilogue(char *context) {
+static void codegen_epilogue(Node *scope) {
   int num_locals = 0;
   LVar *l = locals;
   while (l) {
@@ -78,7 +78,7 @@ static void codegen_epilogue(char *context) {
   printf("\n");
   printf("  # Epilogue\n");
   // sp を戻す
-  printf("  addi sp, sp, %d\n", max_lvar_offset(context) + 8);
+  printf("  addi sp, sp, %d\n", max_lvar_offset(scope) + 8);
   // fp も戻す
   // ここ lw にしたらおかしくなった
   printf("  ld fp, -8(sp)\n");
@@ -336,7 +336,7 @@ static void codegen_expr(Node *node) {
 
     // これいるか？？ sp はどういう状態で引き渡せばいいんだ
     printf("  addi sp, sp, -8\n");
-    printf("  call %.*s\n", node->name_len, node->name);
+    printf("  call %.*s\n", node->ident->len, node->ident->str);
     printf("  addi sp, sp, 8\n");
 
     // 結果は a0 に入っているよな
@@ -464,7 +464,7 @@ bool codegen_node(Node *node) {
     codegen_pop_t0();
 
     printf("  mv a0, t0\n");
-    codegen_epilogue(context);
+    codegen_epilogue(curr_scope);
 
     return false;
 
@@ -565,10 +565,10 @@ bool codegen_node(Node *node) {
   case ND_FUNCDECL:
     printf("\n");
     printf("  .text\n");
-    printf("%.*s:\n", node->name_len, node->name);
+    printf("%.*s:\n", node->ident->len, node->ident->str);
 
-    context = strndup(node->name, node->name_len);
-    codegen_prologue(context);
+    curr_scope = node;
+    codegen_prologue(curr_scope);
 
     int arg_count = 0;
     for (NodeList *a = node->args; a; a = a->next) {
@@ -586,7 +586,8 @@ bool codegen_node(Node *node) {
     }
 
     printf("  mv a0, zero\n");
-    codegen_epilogue(context);
+    codegen_epilogue(curr_scope);
+    curr_scope = NULL;
 
     return false;
 

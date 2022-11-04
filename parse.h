@@ -1,3 +1,4 @@
+#include "tokenize.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -18,8 +19,8 @@ struct Type {
 struct LVar {
   LVar *next;
   char *name;
-  int len;       // name の長さ
-  char *context; // この lvar が定義されている関数名
+  int len; // name の長さ
+  Node *scope;
   Type *type;
   int offset; // メモリ上のオフセット。fp からの位置
 };
@@ -84,9 +85,10 @@ struct Node {
   // すくなくとも LVar *にしたい気がする
   NodeList *args;
 
-  // ND_CALL のときだけ。関数名
-  char *name;
-  int name_len;
+  // ND_CALL, ND_FUNCDECL のときだけ。関数名
+  // そのうち関数の使用に宣言が必要になったら
+  // これも Func * みたいなものになりそう (cf. lvar, gvar)
+  Token *ident;
 
   int val;    // used when kind == ND_NUM
               // あと ND_STRING のとき str_lits の index
@@ -112,4 +114,4 @@ char *type_to_str(Type *type);
 
 extern LVar *locals;
 extern StrLit *str_lits;
-extern char *context;
+extern Node *curr_scope;

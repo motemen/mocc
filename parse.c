@@ -11,8 +11,11 @@
 
 LVar *locals;
 GVar *globals;
-char *context; // いまみてる関数名
 StrLit *str_lits;
+
+// 現在のローカル変数のスコープ
+// いまのとこ ND_FUNCDECL のみ
+Node *curr_scope;
 
 char *node_kind_to_str(NodeKind kind) {
   switch (kind) {
@@ -102,13 +105,14 @@ static Node *new_node_num(int val) {
   return node;
 }
 
-static LVar *find_lvar(char *context, char *name, int len) {
-  assert(context != NULL);
+static LVar *find_lvar(Node *scope, char *name, int len) {
+  assert(scope != NULL);
+  assert(scope->kind == ND_FUNCDECL);
 
   LVar *last_var = locals;
   for (LVar *var = locals; var; last_var = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len) &&
-        strcmp(var->context, context) == 0) {
+        var->scope == scope) {
       return var;
     }
   }
@@ -116,17 +120,18 @@ static LVar *find_lvar(char *context, char *name, int len) {
   return NULL;
 }
 
-static LVar *add_lvar(char *context, char *name, int len, Type *type) {
-  assert(context != NULL);
+static LVar *add_lvar(Node *scope, char *name, int len, Type *type) {
+  assert(scope != NULL);
+  assert(scope->kind == ND_FUNCDECL);
 
   LVar *last_var = locals;
   int offset = 8;
   for (LVar *var = locals; var; last_var = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len) &&
-        strcmp(var->context, context) == 0) {
+        var->scope == scope) {
       error("variable already defined: '%.*s'", len, name);
     }
-    if (strcmp(var->context, context) == 0) {
+    if (var->scope == scope) {
       offset = var->offset;
       // if (var->type->ty == ARRAY) {
       //   offset += 8 * var->type->array_size;
@@ -139,7 +144,7 @@ static LVar *add_lvar(char *context, char *name, int len, Type *type) {
   LVar *var = calloc(1, sizeof(LVar));
   var->name = name;
   var->len = len;
-  var->context = context;
+  var->scope = scope;
   var->offset = offset + (sizeof_type(type) + 7) / 8 * 8;
   var->type = type;
 
@@ -259,8 +264,7 @@ static Node *parse_primary() {
 
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_CALL;
-      node->name = tok->str;
-      node->name_len = tok->len;
+      node->ident = tok;
       node->source_pos = tok->str;
       node->source_len = tok->len;
 
@@ -288,7 +292,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    LVar *lvar = find_lvar(context, tok->str, tok->len);
+    LVar *lvar = find_lvar(curr_scope, tok->str, tok->len);
     if (lvar) {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
@@ -677,7 +681,7 @@ Node *parse_stmt() {
       type = new_type_array_of(type, size);
     }
 
-    LVar *lvar = add_lvar(context, tok_var->str, tok_var->len, type);
+    LVar *lvar = add_lvar(curr_scope, tok_var->str, tok_var->len, type);
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_VARDECL;
@@ -713,12 +717,11 @@ Node *parse_funcdecl_or_vardecl() {
 
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_FUNCDECL;
-  node->name = ident->str;
-  node->name_len = ident->len;
+  node->ident = ident;
   node->source_pos = ident->str;
   node->source_len = ident->len;
 
-  context = strndup(ident->str, ident->len);
+  curr_scope = node;
 
   if (token_consume_punct("(")) {
     if (token_consume_punct(")")) {
@@ -739,7 +742,7 @@ Node *parse_funcdecl_or_vardecl() {
 
         Node *ident = calloc(1, sizeof(Node));
         ident->kind = ND_LVAR;
-        LVar *lvar = add_lvar(context, tok->str, tok->len, type);
+        LVar *lvar = add_lvar(curr_scope, tok->str, tok->len, type);
         ident->lvar = lvar;
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
@@ -767,6 +770,8 @@ Node *parse_funcdecl_or_vardecl() {
     }
 
     node->nodes = block->nodes;
+
+    curr_scope = NULL;
 
     return node;
   }

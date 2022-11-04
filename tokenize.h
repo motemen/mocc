@@ -1,3 +1,6 @@
+#ifndef _TOKENIZE_H_
+#define _TOKENIZE_H_
+
 #include <stdbool.h>
 
 typedef enum {
@@ -39,3 +42,5 @@ bool token_consume_type(char *type);
 bool token_at_eof();
 void token_expect_punct(char *op);
 int token_expect_number();
+
+#endif
