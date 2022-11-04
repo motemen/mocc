@@ -776,7 +776,7 @@ Node *parse_funcdecl_or_vardecl() {
   // こちらからグローバル変数になります
   node->kind = ND_GVARDECL;
 
-  if (token_consume_reserved("[")) {
+  while (token_consume_reserved("[")) {
     int size = token_expect_number();
     token_expect("]");
 

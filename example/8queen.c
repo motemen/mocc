@@ -1,29 +1,27 @@
-int board[64];
-int check[64];
-
-int pos_to_index(int x, int y) { return y * 8 + x; }
+int board[8][8];
+int check[8][8];
 
 int _check_board_by(int x, int y, int mark, int inc) {
-  board[pos_to_index(x, y)] = mark;
+  board[y][x] = mark;
 
   int _x;
   int _y;
 
   for (_x = 0; _x < 8; _x = _x + 1) {
-    check[pos_to_index(_x, y)] = check[pos_to_index(_x, y)] + inc;
+    check[y][_x] = check[y][_x] + inc;
   }
 
   for (_y = 0; _y < 8; _y = _y + 1) {
-    check[pos_to_index(x, _y)] = check[pos_to_index(x, _y)] + inc;
+    check[_y][x] = check[_y][x] + inc;
   }
 
   for (_x = 0; _x < 8; _x = _x + 1) {
     for (_y = 0; _y < 8; _y = _y + 1) {
       if (x + y == _x + _y) {
-        check[pos_to_index(_x, _y)] = check[pos_to_index(_x, _y)] + inc;
+        check[_y][_x] = check[_y][_x] + inc;
       }
       if (x - y == _x - _y) {
-        check[pos_to_index(_x, _y)] = check[pos_to_index(_x, _y)] + inc;
+        check[_y][_x] = check[_y][_x] + inc;
       }
     }
   }
@@ -37,7 +35,7 @@ int print_board() {
   int y;
   for (y = 0; y < 8; y = y + 1) {
     for (x = 0; x < 8; x = x + 1) {
-      if (board[pos_to_index(x, y)] == 1) {
+      if (board[y][x] == 1) {
         putchar(81);
       } else {
         putchar(46);
@@ -52,7 +50,7 @@ int print_check() {
   int y;
   for (y = 0; y < 8; y = y + 1) {
     for (x = 0; x < 8; x = x + 1) {
-      putchar(48 + check[pos_to_index(x, y)]);
+      putchar(48 + check[y][x]);
     }
     putchar(10);
   }
@@ -67,7 +65,7 @@ int solve(int x) {
 
   int y;
   for (y = 0; y < 8; y = y + 1) {
-    if (check[pos_to_index(x, y)] == 0) {
+    if (check[y][x] == 0) {
       check_board(x, y);
       solve(x + 1);
       uncheck_board(x, y);
@@ -80,8 +78,8 @@ int main() {
   int y;
   for (y = 0; y < 8; y = y + 1) {
     for (x = 0; x < 8; x = x + 1) {
-      board[pos_to_index(x, y)] = 0;
-      check[pos_to_index(x, y)] = 0;
+      board[y][x] = 0;
+      check[y][x] = 0;
     }
   }
 
