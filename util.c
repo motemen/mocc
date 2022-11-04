@@ -47,9 +47,9 @@ _Noreturn void error_at(char *loc, char *fmt, ...) {
 _Noreturn void error(char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
-  if (!token) {
+  if (!curr_token) {
     verror_at(NULL, fmt, ap);
   } else {
-    verror_at(token->str, fmt, ap);
+    verror_at(curr_token->str, fmt, ap);
   }
 }

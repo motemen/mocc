@@ -1,8 +1,7 @@
 #include <stdbool.h>
 
 typedef enum {
-  TK_RESERVED, // これは TK_SYMBOL とかにしたい希ガス
-  // "return", "if", ... とかは TK_RESERVED にしてもよい
+  TK_PUNCT,
   TK_RETURN,
   TK_IF,
   TK_ELSE,
@@ -22,23 +21,21 @@ struct Token {
   TokenKind kind;
   Token *next;
 
-  int val; // kind == TK_NUM のときだけ。数値リテラル
+  int val;
 
   // ソースコード上の位置
   char *str;
   int len;
 };
 
-extern Token *token;
+extern Token *curr_token;
+extern Token *prev_token;
 
-Token *tokenize(char *p);
+void tokenize(char *p);
 
-bool token_consume(TokenKind kind);
-Token *token_advance(TokenKind kind);
-bool token_consume_reserved(char *op);
+Token *token_consume(TokenKind kind);
+bool token_consume_punct(char *op);
 bool token_consume_type(char *type);
 bool token_at_eof();
-void token_expect(char *op);
+void token_expect_punct(char *op);
 int token_expect_number();
-
-Token *token_consume_ident();

@@ -5,78 +5,56 @@
 #include <stdlib.h>
 #include <string.h>
 
-Token *token;
+Token *curr_token;
+Token *prev_token;
 
-// TODO: token_advance にする
-bool token_consume(TokenKind kind) {
-  if (token->kind != kind) {
-    return false;
-  }
-
-  token = token->next;
-  return true;
-}
-
-Token *token_advance(TokenKind kind) {
-  if (token->kind != kind) {
+Token *token_consume(TokenKind kind) {
+  if (curr_token->kind != kind) {
     return NULL;
   }
 
-  Token *result = token;
-  token = token->next;
-  return result;
+  prev_token = curr_token;
+  curr_token = curr_token->next;
+  return prev_token;
 }
 
-// TK_RESERVED なものがあれば進んで true、なかったら false
-bool token_consume_reserved(char *op) {
-  if (token->kind != TK_RESERVED || token->len != strlen(op) ||
-      strncmp(token->str, op, token->len) != 0) {
+bool token_consume_punct(char *op) {
+  if (curr_token->kind != TK_PUNCT || curr_token->len != strlen(op) ||
+      strncmp(curr_token->str, op, curr_token->len) != 0) {
     return false;
   }
 
-  token = token->next;
+  prev_token = curr_token;
+  curr_token = curr_token->next;
   return true;
 }
 
 bool token_consume_type(char *type) {
-  if (token->kind != TK_TYPE || token->len != strlen(type) ||
-      strncmp(token->str, type, token->len) != 0) {
+  if (curr_token->kind != TK_TYPE || curr_token->len != strlen(type) ||
+      strncmp(curr_token->str, type, curr_token->len) != 0) {
     return false;
   }
 
-  token = token->next;
+  prev_token = curr_token;
+  curr_token = curr_token->next;
   return true;
 }
 
-bool token_at_eof() { return token->kind == TK_EOF; }
+bool token_at_eof() { return curr_token->kind == TK_EOF; }
 
-void token_expect(char *op) {
-  if (token->kind != TK_RESERVED || token->len != strlen(op) ||
-      strncmp(token->str, op, token->len) != 0) {
-    error("token_expect: not '%c'", *op);
+void token_expect_punct(char *op) {
+  if (!token_consume_punct(op)) {
+    error("token_expect_punct: not '%s'", op);
   }
-
-  token = token->next;
 }
 
 int token_expect_number() {
-  if (token->kind != TK_NUM) {
+  Token *tok = token_consume(TK_NUM);
+  if (!tok) {
     error("expected number");
   }
 
-  int val = token->val;
-  token = token->next;
-  return val;
-}
-
-Token *token_consume_ident() {
-  if (token->kind != TK_IDENT) {
-    return NULL;
-  }
-
-  Token *tok = token;
-  token = token->next;
-  return tok;
+  return tok->val;
 }
 
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
@@ -97,7 +75,7 @@ static Token *new_token_num(Token *cur, int val) {
 
 static bool isident(char ch) { return isalnum(ch) || ch == '_'; }
 
-Token *tokenize(char *p) {
+void tokenize(char *p) {
   Token head;
   head.next = NULL;
   Token *cur = &head;
@@ -137,13 +115,13 @@ Token *tokenize(char *p) {
     if (strncmp(p, "<=", 2) == 0 || strncmp(p, ">=", 2) == 0 ||
         strncmp(p, "==", 2) == 0 || strncmp(p, "!=", 2) == 0 ||
         strncmp(p, "||", 2) == 0) {
-      cur = new_token(TK_RESERVED, cur, p, 2);
+      cur = new_token(TK_PUNCT, cur, p, 2);
       p += 2;
       continue;
     }
 
     if (strchr("+-*/()<>=;{},&[]", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++, 1);
+      cur = new_token(TK_PUNCT, cur, p++, 1);
       continue;
     }
 
@@ -216,5 +194,5 @@ Token *tokenize(char *p) {
   }
 
   new_token(TK_EOF, cur, p, 0);
-  return head.next;
+  curr_token = head.next;
 }

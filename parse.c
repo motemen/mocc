@@ -92,15 +92,13 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
-  node->source_pos = token->str; // ホントは一個前のトークンの位置を入れたい
+  node->source_pos = prev_token->str;
   return node;
 }
 
 static Node *new_node_num(int val) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = ND_NUM;
+  Node *node = new_node(ND_NUM, NULL, NULL);
   node->val = val;
-  node->source_pos = token->str;
   return node;
 }
 
@@ -247,16 +245,16 @@ static StrLit *add_str_lit(char *str, int len) {
 Node *parse_expr();
 
 static Node *parse_primary() {
-  if (token_consume_reserved("(")) {
+  if (token_consume_punct("(")) {
     Node *node = parse_expr();
-    token_expect(")");
+    token_expect_punct(")");
     return node;
   }
 
   // parse_ident 相当
-  Token *tok = token_consume_ident();
+  Token *tok = token_consume(TK_IDENT);
   if (tok != NULL) {
-    if (token_consume_reserved("(")) {
+    if (token_consume_punct("(")) {
       // 関数呼び出しだった
 
       Node *node = calloc(1, sizeof(Node));
@@ -266,7 +264,7 @@ static Node *parse_primary() {
       node->source_pos = tok->str;
       node->source_len = tok->len;
 
-      if (token_consume_reserved(")")) {
+      if (token_consume_punct(")")) {
         // 引数ナシ
       } else {
         NodeList head = {};
@@ -277,11 +275,11 @@ static Node *parse_primary() {
           cur->next = node_item;
           cur = cur->next;
 
-          if (token_consume_reserved(")")) {
+          if (token_consume_punct(")")) {
             break;
           }
 
-          token_expect(",");
+          token_expect_punct(",");
         }
 
         node->nodes = head.next;
@@ -319,7 +317,7 @@ static Node *parse_primary() {
     error("variable not found: '%.*s'", tok->len, tok->str);
   }
 
-  Token *tok_str = token_advance(TK_STRING);
+  Token *tok_str = token_consume(TK_STRING);
   if (tok_str) {
     StrLit *str_lit = add_str_lit(tok_str->str, tok_str->len);
     Node *node = calloc(1, sizeof(Node));
@@ -430,9 +428,9 @@ int sizeof_type(Type *type) {
 static Node *parse_postfix() {
   Node *node = parse_primary();
 
-  while (token_consume_reserved("[")) {
+  while (token_consume_punct("[")) {
     Node *expr = parse_expr();
-    token_expect("]");
+    token_expect_punct("]");
     node = new_node(ND_DEREF, new_node(ND_ADD, node, expr), NULL);
   }
 
@@ -440,24 +438,24 @@ static Node *parse_postfix() {
 }
 
 static Node *parse_unary() {
-  if (token_consume_reserved("+")) {
+  if (token_consume_punct("+")) {
     return parse_postfix();
   }
 
-  if (token_consume_reserved("-")) {
+  if (token_consume_punct("-")) {
     return new_node(ND_SUB, new_node_num(0), parse_primary());
   }
 
-  if (token_consume_reserved("*")) {
+  if (token_consume_punct("*")) {
     return new_node(ND_DEREF, parse_unary(), NULL);
   }
 
-  if (token_consume_reserved("&")) {
+  if (token_consume_punct("&")) {
     Node *node = parse_unary();
     return new_node(ND_ADDR, node, NULL);
   }
 
-  if (token_consume(TK_SIZEOF)) {
+  if (token_consume(TK_SIZEOF) != NULL) {
     Node *node = parse_unary();
     Type *type = typeof_node(node);
     int size = sizeof_type(type);
@@ -470,9 +468,9 @@ static Node *parse_unary() {
 static Node *parse_mul() {
   Node *node = parse_unary();
   for (;;) {
-    if (token_consume_reserved("*")) {
+    if (token_consume_punct("*")) {
       node = new_node(ND_MUL, node, parse_unary());
-    } else if (token_consume_reserved("/")) {
+    } else if (token_consume_punct("/")) {
       node = new_node(ND_DIV, node, parse_unary());
     } else {
       return node;
@@ -483,9 +481,9 @@ static Node *parse_mul() {
 static Node *parse_add() {
   Node *node = parse_mul();
   for (;;) {
-    if (token_consume_reserved("+")) {
+    if (token_consume_punct("+")) {
       node = new_node(ND_ADD, node, parse_mul());
-    } else if (token_consume_reserved("-")) {
+    } else if (token_consume_punct("-")) {
       node = new_node(ND_SUB, node, parse_mul());
     } else {
       return node;
@@ -496,13 +494,13 @@ static Node *parse_add() {
 static Node *parse_relational() {
   Node *node = parse_add();
   for (;;) {
-    if (token_consume_reserved("<")) {
+    if (token_consume_punct("<")) {
       node = new_node(ND_LT, node, parse_add());
-    } else if (token_consume_reserved(">")) {
+    } else if (token_consume_punct(">")) {
       node = new_node(ND_LT, parse_add(), node);
-    } else if (token_consume_reserved("<=")) {
+    } else if (token_consume_punct("<=")) {
       node = new_node(ND_GE, parse_add(), node);
-    } else if (token_consume_reserved(">=")) {
+    } else if (token_consume_punct(">=")) {
       node = new_node(ND_GE, node, parse_add());
     } else {
       return node;
@@ -513,9 +511,9 @@ static Node *parse_relational() {
 static Node *parse_equality() {
   Node *node = parse_relational();
   for (;;) {
-    if (token_consume_reserved("==")) {
+    if (token_consume_punct("==")) {
       node = new_node(ND_EQ, node, parse_relational());
-    } else if (token_consume_reserved("!=")) {
+    } else if (token_consume_punct("!=")) {
       node = new_node(ND_NE, node, parse_relational());
     } else {
       return node;
@@ -526,7 +524,7 @@ static Node *parse_equality() {
 static Node *parse_or() {
   Node *node = parse_equality();
   for (;;) {
-    if (token_consume_reserved("||")) {
+    if (token_consume_punct("||")) {
       node = new_node(ND_LOGOR, node, parse_equality());
     } else {
       return node;
@@ -536,7 +534,7 @@ static Node *parse_or() {
 
 static Node *parse_assign() {
   Node *node = parse_or();
-  if (token_consume_reserved("=")) {
+  if (token_consume_punct("=")) {
     node = new_node(ND_ASSIGN, node, parse_assign());
   }
   return node;
@@ -547,15 +545,15 @@ Node *parse_expr() { return parse_assign(); }
 Node *parse_stmt();
 
 Node *parse_block() {
-  if (token_consume_reserved("{")) {
+  if (token_consume_punct("{")) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_BLOCK;
-    node->source_pos = token->str;
-    node->source_len = token->len;
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
 
     NodeList head = {};
     NodeList *cur = &head;
-    while (!token_consume_reserved("}")) {
+    while (!token_consume_punct("}")) {
       NodeList *node_item = calloc(1, sizeof(NodeList));
       node_item->node = parse_stmt();
       cur->next = node_item;
@@ -579,7 +577,7 @@ Type *parse_type() {
     return NULL;
   }
 
-  while (token_consume_reserved("*")) {
+  while (token_consume_punct("*")) {
     Type *type_p = calloc(1, sizeof(Type));
     type_p->ty = PTR;
     type_p->base = type;
@@ -591,24 +589,24 @@ Type *parse_type() {
 }
 
 Node *parse_stmt() {
-  if (token_consume(TK_RETURN)) {
+  if (token_consume(TK_RETURN) != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_RETURN;
-    node->source_pos = token->str;
-    node->source_len = token->len;
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
     node->lhs = parse_expr();
-    token_expect(";");
+    token_expect_punct(";");
     return node;
   }
 
-  if (token_consume(TK_IF)) {
-    token_expect("(");
+  if (token_consume(TK_IF) != NULL) {
+    token_expect_punct("(");
     Node *expr = parse_expr();
-    token_expect(")");
+    token_expect_punct(")");
     Node *stmt = parse_stmt();
 
     Node *else_stmt = NULL;
-    if (token_consume(TK_ELSE)) {
+    if (token_consume(TK_ELSE) != NULL) {
       else_stmt = parse_stmt();
     }
 
@@ -618,46 +616,46 @@ Node *parse_stmt() {
     node->rhs = stmt;
     node->node3 = else_stmt;
     node->source_pos = expr->source_pos;
-    node->source_len = expr->source_len; // ではないのだが FIXME
+    node->source_len = expr->source_len;
     return node;
   }
 
-  if (token_consume(TK_WHILE)) {
+  if (token_consume(TK_WHILE) != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_WHILE;
-    node->source_pos = token->str;
-    node->source_len = token->len; // ちがうけど…
-    token_expect("(");
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
+    token_expect_punct("(");
     node->lhs = parse_expr();
-    token_expect(")");
+    token_expect_punct(")");
     node->rhs = parse_stmt();
 
     return node;
   }
 
-  if (token_consume(TK_FOR)) {
+  if (token_consume(TK_FOR) != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FOR;
-    node->source_pos = token->str;
-    node->source_len = token->len; // ちがうけど…
-    token_expect("(");
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
+    token_expect_punct("(");
 
-    if (!token_consume_reserved(";")) {
+    if (!token_consume_punct(";")) {
       node->lhs = parse_expr();
-      token_expect(";");
+      token_expect_punct(";");
     }
 
-    if (!token_consume_reserved(";")) {
+    if (!token_consume_punct(";")) {
       node->rhs = parse_expr();
-      token_expect(";");
+      token_expect_punct(";");
     }
 
-    if (!token_consume_reserved(")")) {
+    if (!token_consume_punct(")")) {
       node->node3 = parse_expr();
-      token_expect(")");
+      token_expect_punct(")");
     }
 
-    if (!token_consume_reserved(";")) {
+    if (!token_consume_punct(";")) {
       node->node4 = parse_stmt();
     }
 
@@ -667,14 +665,14 @@ Node *parse_stmt() {
   // parse_vardecl
   Type *type = parse_type();
   if (type) {
-    Token *tok_var = token_consume_ident();
+    Token *tok_var = token_consume(TK_IDENT);
     if (!tok_var) {
       error("expected variable name");
     }
 
-    while (token_consume_reserved("[")) {
+    while (token_consume_punct("[")) {
       int size = token_expect_number();
-      token_expect("]");
+      token_expect_punct("]");
 
       type = new_type_array_of(type, size);
     }
@@ -687,7 +685,7 @@ Node *parse_stmt() {
     node->source_pos = tok_var->str;
     node->source_len = tok_var->len;
 
-    token_expect(";");
+    token_expect_punct(";");
 
     return node;
   }
@@ -698,7 +696,7 @@ Node *parse_stmt() {
   }
 
   Node *node = parse_expr();
-  token_expect(";");
+  token_expect_punct(";");
   return node;
 }
 
@@ -708,7 +706,7 @@ Node *parse_funcdecl_or_vardecl() {
     error("type expected");
   }
 
-  Token *ident = token_consume_ident();
+  Token *ident = token_consume(TK_IDENT);
   if (!ident) {
     error("expected ident");
   }
@@ -722,8 +720,8 @@ Node *parse_funcdecl_or_vardecl() {
 
   context = strndup(ident->str, ident->len);
 
-  if (token_consume_reserved("(")) {
-    if (token_consume_reserved(")")) {
+  if (token_consume_punct("(")) {
+    if (token_consume_punct(")")) {
       // 引数ナシ
     } else {
       NodeList head = {};
@@ -734,7 +732,7 @@ Node *parse_funcdecl_or_vardecl() {
           error("type expected");
         }
 
-        Token *tok = token_consume_ident();
+        Token *tok = token_consume(TK_IDENT);
         if (!tok) {
           error("expected ident");
         }
@@ -751,11 +749,11 @@ Node *parse_funcdecl_or_vardecl() {
         cur->next = node_item;
         cur = cur->next;
 
-        if (token_consume_reserved(")")) {
+        if (token_consume_punct(")")) {
           break;
         }
 
-        token_expect(",");
+        token_expect_punct(",");
       }
 
       node->args = head.next;
@@ -776,14 +774,14 @@ Node *parse_funcdecl_or_vardecl() {
   // こちらからグローバル変数になります
   node->kind = ND_GVARDECL;
 
-  while (token_consume_reserved("[")) {
+  while (token_consume_punct("[")) {
     int size = token_expect_number();
-    token_expect("]");
+    token_expect_punct("]");
 
     type = new_type_array_of(type, size);
   }
 
-  token_expect(";");
+  token_expect_punct(";");
 
   GVar *gvar = add_gvar(ident->str, ident->len, type);
   node->gvar = gvar;
@@ -791,7 +789,7 @@ Node *parse_funcdecl_or_vardecl() {
   return node;
 }
 
-Node *code[100];
+Node *code[100]; // FIXME
 
 void parse_program() {
   int i = 0;
@@ -799,4 +797,8 @@ void parse_program() {
     code[i++] = parse_funcdecl_or_vardecl();
   }
   code[i] = NULL;
+
+  if (curr_token != NULL && curr_token->kind != TK_EOF) {
+    error("not all tokens are consumed");
+  }
 }

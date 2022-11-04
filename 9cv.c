@@ -42,8 +42,8 @@ char *read_file(char *path) {
 char *read_stdin() {
   char *buf = NULL;
   size_t cap = 1024;
+  size_t len = 0;
   for (;;) {
-    size_t len = 0;
     buf = realloc(buf, cap);
     if (!buf) {
       fprintf(stderr, "realloc: %s\n", strerror(errno));
@@ -64,6 +64,9 @@ char *read_stdin() {
       buf[len + n] = '\0';
       return buf;
     }
+
+    len += n;
+    cap *= 2;
   }
 }
 
@@ -84,20 +87,11 @@ int main(int argc, char **argv) {
     user_input = read_file(argv[1]);
   }
 
-  token = tokenize(user_input);
+  tokenize(user_input);
 
   parse_program();
 
-  if (token != NULL && token->kind != TK_EOF) {
-    error("not all tokens are consumed");
-  }
-
-  codegen_preamble();
-
-  for (int i = 0; code[i]; i++) {
-    if (codegen(code[i]))
-      codegen_pop_t0();
-  }
+  codegen();
 
   return 0;
 }

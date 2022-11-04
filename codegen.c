@@ -11,26 +11,26 @@
 // void * のサイズは 8 bytes
 
 // これ addi 4 にしたら死んだ
-void codegen_pop_t0() {
+static void codegen_pop_t0() {
   printf("  # pop t0 {{{\n");
   printf("  ld t0, 0(sp)\n");
   printf("  addi sp, sp, 8\n");
   printf("  # }}}\n");
 }
 
-void codegen_pop_t1() {
+static void codegen_pop_t1() {
   printf("  # pop t1 {{{\n");
   printf("  ld t1, 0(sp)\n");
   printf("  addi sp, sp, 8\n");
   printf("  # }}}\n");
 }
 
-void codegen_pop_discard() {
+static void codegen_pop_discard() {
   printf("  # pop\n");
   printf("  addi sp, sp, 8\n");
 }
 
-void codegen_push_t0() {
+static void codegen_push_t0() {
   printf("  # push t0 {{{\n");
   printf("  sd t0, -8(sp)\n");
   printf("  addi sp, sp, -8\n");
@@ -90,9 +90,11 @@ static void codegen_epilogue(char *context) {
 
 int label_index = 0;
 
+static void codegen_expr(Node *node);
+
 // LVar である node のアドレスを push する
 // または、ポインタの deref を計算してアドレスを push する
-void codegen_push_lvalue(Node *node) {
+static void codegen_push_lvalue(Node *node) {
   if (node->kind == ND_LVAR) {
     printf("  # (lvalue) address for '%.*s'\n", node->lvar->len,
            node->lvar->name);
@@ -123,7 +125,7 @@ void codegen_push_lvalue(Node *node) {
   error_at(node->source_pos, "not an lvalue: %s", node_kind_to_str(node->kind));
 }
 
-void codegen_expr(Node *node) {
+static void codegen_expr(Node *node) {
   int lindex;
 
   switch (node->kind) {
@@ -431,7 +433,7 @@ void codegen_preamble() {
   printf("  .global main\n");
 }
 
-bool codegen(Node *node) {
+bool codegen_node(Node *node) {
   int lindex;
 
   switch (node->kind) {
@@ -477,7 +479,7 @@ bool codegen(Node *node) {
     printf("  beqz t0, .Lelse%03d\n", lindex);
 
     printf("  # if {\n");
-    if (codegen(node->rhs))
+    if (codegen_node(node->rhs))
       codegen_pop_discard();
     printf("  j .Lend%03d\n", lindex);
     printf("  # if }\n");
@@ -485,7 +487,7 @@ bool codegen(Node *node) {
     printf("  # else {\n");
     printf(".Lelse%03d:\n", lindex);
     if (node->node3) {
-      if (codegen(node->node3))
+      if (codegen_node(node->node3))
         codegen_pop_discard();
     }
     printf("  # else }\n");
@@ -508,7 +510,7 @@ bool codegen(Node *node) {
 
     printf("  beqz t0, .Lend%03d\n", lindex);
 
-    if (codegen(node->rhs))
+    if (codegen_node(node->rhs))
       codegen_pop_discard();
 
     printf("  j .Lbegin%03d\n", lindex);
@@ -522,7 +524,7 @@ bool codegen(Node *node) {
     int lindex = ++label_index;
 
     if (node->lhs) {
-      if (codegen(node->lhs))
+      if (codegen_node(node->lhs))
         codegen_pop_discard();
     }
 
@@ -535,7 +537,7 @@ bool codegen(Node *node) {
     }
 
     if (node->node4) {
-      if (codegen(node->node4)) // { ... }
+      if (codegen_node(node->node4)) // { ... }
         codegen_pop_discard();
     }
 
@@ -554,7 +556,7 @@ bool codegen(Node *node) {
 
   case ND_BLOCK:
     for (NodeList *n = node->nodes; n; n = n->next) {
-      if (codegen(n->node))
+      if (codegen_node(n->node))
         codegen_pop_discard();
     }
 
@@ -579,7 +581,7 @@ bool codegen(Node *node) {
     }
 
     for (NodeList *n = node->nodes; n; n = n->next) {
-      if (codegen(n->node))
+      if (codegen_node(n->node))
         codegen_pop_t0();
     }
 
@@ -604,4 +606,13 @@ bool codegen(Node *node) {
 
   error_at(node->source_pos, "codegen not implemented: %s",
            node_kind_to_str(node->kind));
+}
+
+void codegen() {
+  codegen_preamble();
+
+  for (int i = 0; code[i]; i++) {
+    if (codegen_node(code[i]))
+      codegen_pop_t0();
+  }
 }
