@@ -1,4 +1,8 @@
+// 盤の状態
 int board[8][8];
+
+// 利きの状態
+// 0 ならクイーンを置いてよい
 int check[8][8];
 
 int _check_board_by(int x, int y, int mark, int inc) {
@@ -36,12 +40,12 @@ int print_board() {
   for (y = 0; y < 8; y = y + 1) {
     for (x = 0; x < 8; x = x + 1) {
       if (board[y][x] == 1) {
-        putchar(81);
+        putchar(81 /* 'Q' */);
       } else {
-        putchar(46);
+        putchar(46 /* '.' */);
       }
     }
-    putchar(10);
+    putchar(10 /* \n */);
   }
 }
 

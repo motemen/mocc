@@ -118,6 +118,22 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "//", 2) == 0) {
+      p += 2;
+      while (*p != '\n')
+        p++;
+      continue;
+    }
+
+    if (strncmp(p, "/*", 2) == 0) {
+      char *end = strstr(p + 2, "*/");
+      if (!end) {
+        error("unclosed comment");
+      }
+      p = end + 2;
+      continue;
+    }
+
     if (strncmp(p, "<=", 2) == 0 || strncmp(p, ">=", 2) == 0 ||
         strncmp(p, "==", 2) == 0 || strncmp(p, "!=", 2) == 0 ||
         strncmp(p, "||", 2) == 0) {
