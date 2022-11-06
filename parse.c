@@ -227,7 +227,7 @@ static StrLit *add_str_lit(char *str, int len) {
 //                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //                | "{" stmt* "}"
 //                | vardecl ";"
-//    vardecl     = type ident ("[" num "]")?
+//    vardecl     = type ident ("[" num "]")? ("=" assign | initializer)?
 //    expr        = assign
 //    assign      = or ("=" assign)?
 //    or          = equality ("||" equality)*
@@ -784,6 +784,10 @@ Node *parse_funcdecl_or_vardecl() {
     token_expect_punct("]");
 
     type = new_type_array_of(type, size);
+  }
+
+  if (token_consume_punct("=")) {
+    node->rhs = parse_expr();
   }
 
   token_expect_punct(";");

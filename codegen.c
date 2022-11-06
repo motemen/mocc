@@ -433,6 +433,48 @@ void codegen_preamble() {
   printf("  .global main\n");
 }
 
+static int precompute_number_initializer(Node *node) {
+  switch (node->kind) {
+  case ND_NUM:
+    return node->val;
+
+  case ND_LT:
+    return precompute_number_initializer(node->lhs) <
+           precompute_number_initializer(node->rhs);
+
+  case ND_GE:
+    return precompute_number_initializer(node->lhs) >=
+           precompute_number_initializer(node->rhs);
+
+  case ND_ADD:
+    return precompute_number_initializer(node->lhs) +
+           precompute_number_initializer(node->rhs);
+
+  case ND_SUB:
+    return precompute_number_initializer(node->lhs) -
+           precompute_number_initializer(node->rhs);
+
+  case ND_MUL:
+    return precompute_number_initializer(node->lhs) *
+           precompute_number_initializer(node->rhs);
+
+  case ND_DIV:
+    return precompute_number_initializer(node->lhs) /
+           precompute_number_initializer(node->rhs);
+
+  case ND_EQ:
+    return precompute_number_initializer(node->lhs) ==
+           precompute_number_initializer(node->rhs);
+
+  case ND_NE:
+    return precompute_number_initializer(node->lhs) !=
+           precompute_number_initializer(node->rhs);
+
+  default:
+    error("not a constant number initializer");
+  }
+}
+
 bool codegen_node(Node *node) {
   int lindex;
 
@@ -601,7 +643,15 @@ bool codegen_node(Node *node) {
     printf("\n");
     printf("  .data\n");
     printf("%.*s:\n", node->gvar->len, node->gvar->name);
-    printf("  .zero %d\n", sizeof_type(node->gvar->type));
+    if (node->rhs != NULL) {
+      // TODO: 配列はまだ
+      // TODO: ポインタの演算はまだ
+      int n = precompute_number_initializer(node->rhs);
+      // TODO: long だったら quad とからしい
+      printf("  .word %d\n", n);
+    } else {
+      printf("  .zero %d\n", sizeof_type(node->gvar->type));
+    }
     return false;
   }
 

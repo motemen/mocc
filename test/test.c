@@ -34,6 +34,7 @@ int main() {
   test_sizeof();
   test_for_while();
   test_pointer();
+  test_global_var();
 
   printf("1..%d\n", test_count);
 
@@ -233,4 +234,14 @@ int test_pointer() {
   is(7777, **pp, "x = 7777; **pp");
 
   ok(&x > 0, "&x > 0");
+}
+
+int gvar_1 = 42;
+int gvar_2 = -1;
+int gvar_3; // 初期化子なし
+
+int test_global_var() {
+  is(42, gvar_1, "gvar_1 = 42");
+  is(-1, gvar_2, "gvar_2 = -1");
+  is(0, gvar_3, "gvar_3");
 }
