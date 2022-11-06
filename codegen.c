@@ -3,6 +3,7 @@
 #include "util.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 // ターゲットの ISA は RISCV64GC ということにする
@@ -633,11 +634,21 @@ bool codegen_node(Node *node) {
 
     return false;
 
-  case ND_VARDECL:
-    // なにもしない
+  case ND_VARDECL: {
     printf("  # vardecl '%.*s' offset=%d size=%d\n", node->lvar->len,
            node->lvar->name, node->lvar->offset, sizeof_type(node->lvar->type));
+
+    if (node->rhs) {
+      Node *lvar = calloc(1, sizeof(Node));
+      lvar->kind = ND_LVAR;
+      lvar->lvar = node->lvar;
+      Node *assign = new_node(ND_ASSIGN, lvar, node->rhs);
+      codegen_expr(assign);
+      codegen_pop_discard();
+    }
+
     return false;
+  }
 
   case ND_GVARDECL: {
     printf("\n");

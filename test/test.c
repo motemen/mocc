@@ -2,8 +2,8 @@
  * 9cv でコンパイルして実行されるテスト
  */
 
-int test_count;
-int fail_count;
+int test_count = 0;
+int fail_count = 0;
 
 int is(int expected, int actual, char *message) {
   if (ok(actual == expected, message) == 0) {
@@ -24,9 +24,6 @@ int ok(int ok, char *message) {
 }
 
 int main() {
-  test_count = 0;
-  fail_count = 0;
-
   test_arithmetic();
   test_func();
   test_array();
@@ -35,6 +32,7 @@ int main() {
   test_for_while();
   test_pointer();
   test_global_var();
+  test_var();
 
   printf("1..%d\n", test_count);
 
@@ -164,8 +162,7 @@ int test_array() {
 int test_string_literal() {
   printf("# string literal\n");
 
-  char *s;
-  s = "Hello, world!";
+  char *s = "Hello, world!";
 
   is(s[0], 72, "s[0] == 72");
   is(s[13], 0, "s[13] == 0");
@@ -192,16 +189,14 @@ int test_sizeof() {
 int test_for_while() {
   printf("# for while\n");
 
-  int sum;
-  sum = 0;
+  int sum = 0;
   int n;
   for (n = 1; n <= 10; n = n + 1) {
     sum = sum + n;
   }
   is(55, sum, "for 1+..+10");
 
-  int x;
-  x = 1;
+  int x = 1;
   for (; x < 1000;)
     x = x * 2;
   is(1024, x, "for(;x<1000;) x=x*2;");
@@ -217,11 +212,8 @@ int test_for_while() {
 
 int test_pointer() {
   int x;
-  int *p;
-  int **pp;
-
-  p = &x;
-  pp = &p;
+  int *p = &x;
+  int **pp = &p;
 
   *p = 5656;
   is(5656, x, "*p = 5656; x");
@@ -247,4 +239,11 @@ int test_global_var() {
   is(0, gvar_3, "gvar_3");
   is(1, gvar_4[0], "gvar_4 = {1, 2, 3}; gvar_4[0]");
   is(0, gvar_4[4], "gvar_4 = {1, 2, 3}; gvar_4[4]");
+}
+
+int test_var() {
+  int a = 2;
+  int b = a * 3;
+  is(2, a, "int a = 2");
+  is(6, b, "int b = a * 3");
 }

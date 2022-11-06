@@ -689,6 +689,10 @@ Node *parse_stmt() {
     node->source_pos = tok_var->str;
     node->source_len = tok_var->len;
 
+    if (token_consume_punct("=")) {
+      node->rhs = parse_expr();
+    }
+
     token_expect_punct(";");
 
     return node;
