@@ -15,7 +15,10 @@ StrLit *str_lits;
 
 // 現在のローカル変数のスコープ
 // いまのとこ ND_FUNCDECL のみ
-Node *curr_scope;
+// 必要になったら Scope にする
+Node *curr_func_scope;
+
+int label_index = 0;
 
 char *node_kind_to_str(NodeKind kind) {
   switch (kind) {
@@ -69,6 +72,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_STRING";
   case ND_LOGOR:
     return "ND_LOGOR";
+  case ND_BREAK:
+    return "ND_BREAK";
   }
 
   return "(unknown)";
@@ -226,6 +231,7 @@ static StrLit *add_str_lit(char *str, int len) {
 //                | "while" "(" expr ")" stmt
 //                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //                | "{" stmt* "}"
+//                | "break" ";"
 //                | vardecl ";"
 //    vardecl     = type ident ("[" num "]")? ("=" assign | initializer)?
 //    expr        = assign
@@ -292,7 +298,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    LVar *lvar = find_lvar(curr_scope, tok->str, tok->len);
+    LVar *lvar = find_lvar(curr_func_scope, tok->str, tok->len);
     if (lvar) {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
@@ -616,6 +622,7 @@ Node *parse_stmt() {
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_IF;
+    node->label_index = ++label_index;
     node->lhs = expr;
     node->rhs = stmt;
     node->node3 = else_stmt;
@@ -627,6 +634,7 @@ Node *parse_stmt() {
   if (token_consume(TK_WHILE) != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_WHILE;
+    node->label_index = ++label_index;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
     token_expect_punct("(");
@@ -640,6 +648,7 @@ Node *parse_stmt() {
   if (token_consume(TK_FOR) != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_FOR;
+    node->label_index = ++label_index;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
     token_expect_punct("(");
@@ -666,6 +675,15 @@ Node *parse_stmt() {
     return node;
   }
 
+  if (token_consume(TK_BREAK) != NULL) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_BREAK;
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
+    token_expect_punct(";");
+    return node;
+  }
+
   // parse_vardecl
   Type *type = parse_type();
   if (type) {
@@ -681,7 +699,7 @@ Node *parse_stmt() {
       type = new_type_array_of(type, size);
     }
 
-    LVar *lvar = add_lvar(curr_scope, tok_var->str, tok_var->len, type);
+    LVar *lvar = add_lvar(curr_func_scope, tok_var->str, tok_var->len, type);
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_VARDECL;
@@ -725,7 +743,7 @@ Node *parse_funcdecl_or_vardecl() {
   node->source_pos = ident->str;
   node->source_len = ident->len;
 
-  curr_scope = node;
+  curr_func_scope = node;
 
   if (token_consume_punct("(")) {
     if (token_consume_punct(")")) {
@@ -746,7 +764,7 @@ Node *parse_funcdecl_or_vardecl() {
 
         Node *ident = calloc(1, sizeof(Node));
         ident->kind = ND_LVAR;
-        LVar *lvar = add_lvar(curr_scope, tok->str, tok->len, type);
+        LVar *lvar = add_lvar(curr_func_scope, tok->str, tok->len, type);
         ident->lvar = lvar;
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
@@ -775,7 +793,7 @@ Node *parse_funcdecl_or_vardecl() {
 
     node->nodes = block->nodes;
 
-    curr_scope = NULL;
+    curr_func_scope = NULL;
 
     return node;
   }

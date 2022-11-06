@@ -202,6 +202,14 @@ int test_for_while() {
   is(1024, x, "for(;x<1000;) x=x*2;");
 
   sum = 0;
+  for (n = 1; n < 10; n = n + 1) {
+    sum = sum + n;
+    if (sum > 10)
+      break;
+  }
+  is(15, sum, "for 1+..+10, break at > 10");
+
+  sum = 0;
   n = 1;
   while (n <= 10) {
     sum = sum + n;

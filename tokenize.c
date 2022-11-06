@@ -155,6 +155,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("break", p, 5) == 0 && !isident(p[5])) {
+      cur = new_token(TK_BREAK, cur, p, 5);
+      p += 5;
+      continue;
+    }
+
     if (strncmp("sizeof", p, 6) == 0 && !isident(p[6])) {
       cur = new_token(TK_SIZEOF, cur, p, 6);
       p += 6;

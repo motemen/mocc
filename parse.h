@@ -66,6 +66,7 @@ typedef enum {
   ND_GVARDECL,
   ND_GVAR,
   ND_STRING,
+  ND_BREAK,
 } NodeKind;
 
 struct Node {
@@ -97,6 +98,8 @@ struct Node {
   LVar *lvar; // ND_LVAR || ND_VARDECL
   GVar *gvar; // ND_VARDECL かつトップレベル
 
+  int label_index; // ND_WHILE || ND_FOR
+
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用
 };
@@ -104,6 +107,14 @@ struct Node {
 struct NodeList {
   Node *node;
   struct NodeList *next;
+};
+
+typedef struct Scope Scope;
+
+struct Scope {
+  Scope *parent;
+  Node *node;
+  // ここにブロック中のローカル変数も出てくるかもしれない
 };
 
 void parse_program();
@@ -116,4 +127,3 @@ char *type_to_str(Type *type);
 
 extern LVar *locals;
 extern StrLit *str_lits;
-extern Node *curr_scope;

@@ -89,7 +89,40 @@ static void codegen_epilogue(Node *scope) {
   printf("  ret\n");
 }
 
-int label_index = 0;
+Scope *curr_scope;
+
+static void scope_create(Node *node) {
+  Scope *scope = calloc(1, sizeof(Scope));
+  scope->node = node;
+  curr_scope = scope;
+}
+
+static void scope_push(Node *node) {
+  assert(curr_scope != NULL);
+  Scope *scope = calloc(1, sizeof(Scope));
+  scope->node = node;
+  scope->parent = curr_scope;
+  curr_scope = scope;
+}
+
+static void scope_pop() {
+  assert(curr_scope != NULL);
+  curr_scope = curr_scope->parent;
+  if (curr_scope == NULL) {
+    assert(curr_scope != NULL);
+  }
+}
+
+static Scope *scope_find(NodeKind kind) {
+  assert(curr_scope != NULL);
+  for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+    if (scope->node->kind == kind) {
+      return scope;
+    }
+  }
+
+  return NULL;
+}
 
 static void codegen_expr(Node *node);
 
@@ -127,8 +160,6 @@ static void codegen_push_lvalue(Node *node) {
 }
 
 static void codegen_expr(Node *node) {
-  int lindex;
-
   switch (node->kind) {
   case ND_NUM:
     printf("  # constant '%d'\n", node->val);
@@ -416,6 +447,7 @@ static void codegen_expr(Node *node) {
   case ND_FUNCDECL:
   case ND_VARDECL:
   case ND_GVARDECL:
+  case ND_BREAK:
     break;
   }
 
@@ -476,9 +508,7 @@ static int precompute_number_initializer(Node *node) {
   }
 }
 
-bool codegen_node(Node *node) {
-  int lindex;
-
+static bool codegen_node(Node *node) {
   switch (node->kind) {
   case ND_NUM:
   case ND_LT:
@@ -507,35 +537,33 @@ bool codegen_node(Node *node) {
     codegen_pop_t0();
 
     printf("  mv a0, t0\n");
-    codegen_epilogue(curr_scope);
+    codegen_epilogue(scope_find(ND_FUNCDECL)->node);
 
     return false;
 
   case ND_IF: {
-    int lindex = ++label_index;
-
     printf("  # ND_IF {{{\n");
 
     codegen_expr(node->lhs);
     codegen_pop_t0();
 
-    printf("  beqz t0, .Lelse%03d\n", lindex);
+    printf("  beqz t0, .Lelse%03d\n", node->label_index);
 
     printf("  # if {\n");
     if (codegen_node(node->rhs))
       codegen_pop_discard();
-    printf("  j .Lend%03d\n", lindex);
+    printf("  j .Lend%03d\n", node->label_index);
     printf("  # if }\n");
 
     printf("  # else {\n");
-    printf(".Lelse%03d:\n", lindex);
+    printf(".Lelse%03d:\n", node->label_index);
     if (node->node3) {
       if (codegen_node(node->node3))
         codegen_pop_discard();
     }
     printf("  # else }\n");
 
-    printf(".Lend%03d:\n", lindex);
+    printf(".Lend%03d:\n", node->label_index);
 
     printf("  # ND_IF }}}\n");
     printf("\n");
@@ -544,39 +572,43 @@ bool codegen_node(Node *node) {
   }
 
   case ND_WHILE: {
-    int lindex = ++label_index;
+    scope_push(node);
 
-    printf(".Lbegin%03d:\n", lindex);
+    printf(".Lbegin%03d:\n", node->label_index);
+    printf(".Lcontinue%03d:\n", node->label_index);
 
     codegen_expr(node->lhs);
     codegen_pop_t0();
 
-    printf("  beqz t0, .Lend%03d\n", lindex);
+    printf("  beqz t0, .Lend%03d\n", node->label_index);
 
     if (codegen_node(node->rhs))
       codegen_pop_discard();
 
-    printf("  j .Lbegin%03d\n", lindex);
+    printf("  j .Lbegin%03d\n", node->label_index);
 
-    printf(".Lend%03d:\n", lindex);
+    printf(".Lbreak%03d:\n", node->label_index);
+    printf(".Lend%03d:\n", node->label_index);
+
+    scope_pop();
 
     return false;
   }
 
   case ND_FOR: {
-    int lindex = ++label_index;
+    scope_push(node);
 
     if (node->lhs) {
       if (codegen_node(node->lhs))
         codegen_pop_discard();
     }
 
-    printf(".Lbegin%03d:\n", lindex);
+    printf(".Lbegin%03d:\n", node->label_index);
 
     if (node->rhs) {
       codegen_expr(node->rhs);
       codegen_pop_t0();
-      printf("  beqz t0, .Lend%03d\n", lindex);
+      printf("  beqz t0, .Lend%03d\n", node->label_index);
     }
 
     if (node->node4) {
@@ -584,20 +616,27 @@ bool codegen_node(Node *node) {
         codegen_pop_discard();
     }
 
+    printf(".Lcontinue%03d:\n", node->label_index);
+
     // i++ みたいなとこ
     if (node->node3) {
       codegen_expr(node->node3);
       codegen_pop_discard();
     }
 
-    printf("j .Lbegin%03d\n", lindex);
+    printf("j .Lbegin%03d\n", node->label_index);
 
-    printf(".Lend%03d:\n", lindex);
+    printf(".Lbreak%03d:\n", node->label_index);
+    printf(".Lend%03d:\n", node->label_index);
+
+    scope_pop();
 
     return false;
   }
 
   case ND_BLOCK:
+    // scope の対応がいるかもね
+
     for (NodeList *n = node->nodes; n; n = n->next) {
       if (codegen_node(n->node))
         codegen_pop_discard();
@@ -610,8 +649,8 @@ bool codegen_node(Node *node) {
     printf("  .text\n");
     printf("%.*s:\n", node->ident->len, node->ident->str);
 
-    curr_scope = node;
-    codegen_prologue(curr_scope);
+    scope_create(node);
+    codegen_prologue(node);
 
     int arg_count = 0;
     for (NodeList *a = node->args; a; a = a->next) {
@@ -629,7 +668,7 @@ bool codegen_node(Node *node) {
     }
 
     printf("  mv a0, zero\n");
-    codegen_epilogue(curr_scope);
+    codegen_epilogue(node);
     curr_scope = NULL;
 
     return false;
@@ -678,6 +717,20 @@ bool codegen_node(Node *node) {
     } else {
       printf("  .zero %d\n", sizeof_type(node->gvar->type));
     }
+    return false;
+  }
+
+  case ND_BREAK: {
+    Scope *scope = scope_find(ND_WHILE);
+    if (!scope) {
+      scope = scope_find(ND_FOR);
+    }
+    if (!scope) {
+      error("not in while or for loop");
+    }
+
+    printf("  j .Lbreak%03d\n", scope->node->label_index);
+
     return false;
   }
   }
