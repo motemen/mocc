@@ -780,6 +780,7 @@ Node *parse_funcdecl_or_vardecl() {
   node->kind = ND_GVARDECL;
 
   while (token_consume_punct("[")) {
+    // TODO: ここが省略できることもある
     int size = token_expect_number();
     token_expect_punct("]");
 
@@ -787,7 +788,33 @@ Node *parse_funcdecl_or_vardecl() {
   }
 
   if (token_consume_punct("=")) {
-    node->rhs = parse_expr();
+    // TODO: 文字列リテラルの場合は {} に読み替えることにする
+    if (token_consume_punct("{")) {
+      if (token_consume_punct("}")) {
+        // 空の場合はゼロ初期化と同じなので何もしない
+      } else {
+        // ここは ND_CALL とよく似てるので parse_expr_list
+        // とかにできるとよさそう
+        NodeList head = {};
+        NodeList *cur = &head;
+        while (true) {
+          NodeList *node_item = calloc(1, sizeof(NodeList));
+          node_item->node = parse_expr();
+          cur->next = node_item;
+          cur = cur->next;
+
+          if (token_consume_punct("}")) {
+            break;
+          }
+
+          token_expect_punct(",");
+        }
+
+        node->nodes = head.next;
+      }
+    } else {
+      node->rhs = parse_expr();
+    }
   }
 
   token_expect_punct(";");

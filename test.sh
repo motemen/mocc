@@ -52,7 +52,7 @@ assert_compile_error() {
 
   compile_program "$input" 2> tmp.err
 
-  if [ $? -ne 1 ]; then
+  if [ "$?" -eq 0 ]; then
     (( test_count++ ))
     not_ok "$input -> compile error $error expected, but unexpectedly succeeded"
     return
@@ -249,6 +249,9 @@ assert_compile_error "variable not found: 'a'" 'int main() { return a; }'
 assert_compile_error "variable not found: 'a'" 'int main() { a = a + 1; int a; }'
 assert_compile_error "variable already defined: 'x'" 'int main() { int x; int x; }'
 assert_compile_error "variable already defined: 'num'" 'int foo(int num) { int num; }'
+
+assert_compile_error "too many elements in array initializer" 'int a[3] = {1, 2, 3, 4};'
+assert_compile_error "array initializer specified but declared is not an array" 'int n = {1, 2, 3, 4};'
 
 # assert_program 0 'int main() {}'
 # assert_program 0 'int main() { return 0; }'

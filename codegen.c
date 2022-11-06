@@ -639,20 +639,36 @@ bool codegen_node(Node *node) {
            node->lvar->name, node->lvar->offset, sizeof_type(node->lvar->type));
     return false;
 
-  case ND_GVARDECL:
+  case ND_GVARDECL: {
     printf("\n");
     printf("  .data\n");
     printf("%.*s:\n", node->gvar->len, node->gvar->name);
     if (node->rhs != NULL) {
-      // TODO: 配列はまだ
+      // TODO: 構造体はまだ
       // TODO: ポインタの演算はまだ
-      int n = precompute_number_initializer(node->rhs);
-      // TODO: long だったら quad とからしい
-      printf("  .word %d\n", n);
+      int num = precompute_number_initializer(node->rhs);
+      // TODO: long だったら quad とからしい。dword?
+      printf("  .word %d\n", num);
+    } else if (node->nodes != NULL) {
+      if (node->gvar->type->ty != ARRAY) {
+        error("array initializer specified but declared is not an array");
+      }
+      int len = node->gvar->type->array_size;
+      for (NodeList *n = node->nodes; n; n = n->next) {
+        int num = precompute_number_initializer(n->node);
+        printf("  .word %d\n", num);
+        if (--len < 0) {
+          error("too many elements in array initializer");
+        }
+      }
+      while (len--) {
+        printf("  .zero %d\n", sizeof_type(node->gvar->type->base));
+      }
     } else {
       printf("  .zero %d\n", sizeof_type(node->gvar->type));
     }
     return false;
+  }
   }
 
   error_at(node->source_pos, "codegen not implemented: %s",
