@@ -79,6 +79,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_CONTINUE";
   case ND_NOP:
     return "ND_NOP";
+  case ND_MEMBER:
+    return "ND_MEMBER";
   }
 
   return "(unknown)";
@@ -115,7 +117,7 @@ static Node *new_node_num(int val) {
   return node;
 }
 
-static LVar *find_lvar(LVar *head, Node *scope, char *name, int len) {
+LVar *find_lvar(LVar *head, Node *scope, char *name, int len) {
   for (LVar *var = head->next; var; var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len) &&
         var->scope == scope) {
@@ -270,6 +272,7 @@ static NamedType *add_named_type(NamedTypeKind kind, char *name, int len,
 //                | "sizeof" unary
 //                | postfix
 //    postfix     = primary ("[" expr "]")*
+//                | primary ("." ident | "->" ident)*
 //    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
 //                | string
 //    ident	      = /[a-z][a-z0-9]*/
@@ -471,6 +474,15 @@ static Node *parse_postfix() {
     Node *expr = parse_expr();
     token_expect_punct("]");
     node = new_node(ND_DEREF, new_node(ND_ADD, node, expr), NULL);
+  }
+
+  while (token_consume_punct(".")) {
+    Token *ident = token_consume(TK_IDENT);
+    if (ident == NULL) {
+      error("expected identifier after '.'");
+    }
+    node = new_node(ND_MEMBER, node, NULL);
+    node->ident = ident;
   }
 
   return node;

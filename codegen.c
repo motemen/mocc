@@ -274,10 +274,6 @@ static void codegen_expr(Node *node) {
     return;
 
   case ND_LVAR:
-    // codegen_push_lvalue(node);
-    // codegen_pop_t0();
-    // printf("  ld t0, 0(t0)\n");
-    // codegen_push_t0();
     if (node->lvar->type->ty == ARRAY) {
       // 配列の場合は先頭要素へのポインタに変換されるのでアドレスを push
       // sizeof, & の場合だけ例外だがそれはそちら側で処理されてる。はず。
@@ -316,15 +312,6 @@ static void codegen_expr(Node *node) {
 
     printf("  # assign to variable '%.*s'\n", node->lhs->source_len,
            node->lhs->source_pos);
-
-    // Type *t = typeof_node(node->lhs);
-    // char *loc = node->source_pos;
-    // int pos = loc - user_input;
-    // fprintf(stderr, "%s\n", user_input);
-    // fprintf(stderr, "%*s", pos, " ");
-    // fprintf(stderr, "^ ");
-    // fprintf(stderr, "  # type: %d", t->ty);
-    // fprintf(stderr, "  # sizeof: %d\n", sizeof_type(typeof_node(node->lhs)));
 
     switch (sizeof_type(typeof_node(node->lhs))) {
     case 1:
@@ -432,6 +419,48 @@ static void codegen_expr(Node *node) {
 
     return;
 
+  case ND_MEMBER: {
+    Type *type = typeof_node(node->lhs);
+    if (type->ty != STRUCT) {
+      error("not a struct: (%s)", type_to_str(type));
+    }
+
+    LVar *member =
+        find_lvar(type->members, NULL, node->ident->str, node->ident->len);
+    if (member == NULL) {
+      error("member not found: %.*s on (%s)", node->ident->len,
+            node->ident->str, type_to_str(type));
+    }
+
+    codegen_push_lvalue(node->lhs);
+    codegen_pop_t0();
+    printf("  # address for member '%.*s'\n", member->len, member->name);
+    printf("  addi t0, t0, %d\n", member->offset);
+
+    // TODO: 配列の場合？
+    // TODO: ND_LVAR とだいぶ似てる
+    int size = sizeof_type(member->type);
+
+    switch (size) {
+    case 1:
+      printf("  lb t0, 0(t0)\n");
+      break;
+    case 4:
+      printf("  lw t0, 0(t0)\n");
+      break;
+    case 8:
+      printf("  ld t0, 0(t0)\n");
+      break;
+
+    default:
+      error("unknown size of memer: (%s)", type_to_str(member->type));
+    }
+
+    codegen_push_t0();
+
+    return;
+  }
+
   case ND_RETURN:
   case ND_IF:
   case ND_WHILE:
@@ -524,6 +553,7 @@ static bool codegen_node(Node *node) {
   case ND_ADDR:
   case ND_GVAR:
   case ND_STRING:
+  case ND_MEMBER:
     codegen_expr(node);
     return true;
 

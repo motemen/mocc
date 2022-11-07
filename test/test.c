@@ -5,6 +5,12 @@
 int test_count = 0;
 int fail_count = 0;
 
+struct Struct1 {
+  int a;
+  int b;
+  char *s;
+};
+
 int is(int expected, int actual, char *message) {
   if (ok(actual == expected, message) == 0) {
     printf("# expected %d but got %d\n", expected, actual);
@@ -33,6 +39,7 @@ int main() {
   test_pointer();
   test_global_var();
   test_var();
+  test_struct();
 
   printf("1..%d\n", test_count);
 
@@ -272,4 +279,9 @@ int test_var() {
   int b = a * 3;
   is(2, a, "int a = 2");
   is(6, b, "int b = a * 3");
+}
+
+int test_struct() {
+  struct Struct1 s1;
+  is(0, s1.a, "struct Struct1 s1; s1.a");
 }

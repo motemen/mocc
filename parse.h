@@ -86,6 +86,7 @@ typedef enum {
   ND_BREAK,
   ND_CONTINUE,
   ND_NOP,
+  ND_MEMBER,
 } NodeKind;
 
 struct Node {
@@ -143,6 +144,7 @@ int sizeof_type(Type *type);
 Type *typeof_node(Node *node);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 char *type_to_str(Type *type);
+LVar *find_lvar(LVar *head, Node *scope, char *name, int len);
 
 extern LVar locals_head;
 extern StrLit str_lits_head;
