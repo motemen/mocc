@@ -80,12 +80,6 @@ int solve(int x) {
 int main() {
   int x;
   int y;
-  for (y = 0; y < 8; y = y + 1) {
-    for (x = 0; x < 8; x = x + 1) {
-      board[y][x] = 0;
-      check[y][x] = 0;
-    }
-  }
 
   solve(0);
 }
