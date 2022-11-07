@@ -207,7 +207,7 @@ int test_for_while() {
     if (sum > 10)
       break;
   }
-  is(15, sum, "for 1+..+10, break at > 10");
+  is(15, sum, "for 1+..+9, break at > 10");
 
   sum = 0;
   n = 1;
@@ -216,6 +216,24 @@ int test_for_while() {
     n = n + 1;
   }
   is(55, sum, "while 1+..+10");
+
+  sum = 0;
+  n = 1;
+  while (n <= 10) {
+    sum = sum + n;
+    n = n + 1;
+    if (n == 10)
+      break;
+  }
+  is(45, sum, "while 1+..+10, break at n == 10");
+
+  sum = 0;
+  for (n = 1; n < 10; n = n + 1) {
+    if (n == 3)
+      continue;
+    sum = sum + n;
+  }
+  is(42, sum, "for 1+..+9, skip 3");
 }
 
 int test_pointer() {

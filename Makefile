@@ -8,7 +8,7 @@ OBJS=$(SRCS:.c=.o)
 $(OBJS): 9cv.h
 
 test: 9cv
-	./9cv test/test.c > tmp.s && riscv64-$(RISCV_HOST)-gcc -static tmp.s -o test.out && spike "$(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./test.out
+	./9cv test/test.c > tmp.s && riscv64-$(RISCV_HOST)-gcc -static tmp.s -o test.out && prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./test.out
 	prove -v ./test.sh
 
 clean:

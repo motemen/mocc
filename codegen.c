@@ -448,6 +448,7 @@ static void codegen_expr(Node *node) {
   case ND_VARDECL:
   case ND_GVARDECL:
   case ND_BREAK:
+  case ND_CONTINUE:
     break;
   }
 
@@ -730,6 +731,20 @@ static bool codegen_node(Node *node) {
     }
 
     printf("  j .Lbreak%03d\n", scope->node->label_index);
+
+    return false;
+  }
+
+  case ND_CONTINUE: {
+    Scope *scope = scope_find(ND_WHILE);
+    if (!scope) {
+      scope = scope_find(ND_FOR);
+    }
+    if (!scope) {
+      error("not in while or for loop");
+    }
+
+    printf("  j .Lcontinue%03d\n", scope->node->label_index);
 
     return false;
   }

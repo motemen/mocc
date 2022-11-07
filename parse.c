@@ -74,6 +74,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_LOGOR";
   case ND_BREAK:
     return "ND_BREAK";
+  case ND_CONTINUE:
+    return "ND_CONTINUE";
   }
 
   return "(unknown)";
@@ -678,6 +680,15 @@ Node *parse_stmt() {
   if (token_consume(TK_BREAK) != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_BREAK;
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
+    token_expect_punct(";");
+    return node;
+  }
+
+  if (token_consume(TK_CONTINUE) != NULL) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_CONTINUE;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
     token_expect_punct(";");

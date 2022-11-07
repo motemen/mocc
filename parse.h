@@ -67,6 +67,7 @@ typedef enum {
   ND_GVAR,
   ND_STRING,
   ND_BREAK,
+  ND_CONTINUE,
 } NodeKind;
 
 struct Node {

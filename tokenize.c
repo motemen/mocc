@@ -161,6 +161,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("continue", p, 8) == 0 && !isident(p[8])) {
+      cur = new_token(TK_CONTINUE, cur, p, 8);
+      p += 8;
+      continue;
+    }
+
     if (strncmp("sizeof", p, 6) == 0 && !isident(p[6])) {
       cur = new_token(TK_SIZEOF, cur, p, 6);
       p += 6;

@@ -253,6 +253,8 @@ assert_compile_error "variable already defined: 'num'" 'int foo(int num) { int n
 assert_compile_error "too many elements in array initializer" 'int a[3] = {1, 2, 3, 4};'
 assert_compile_error "array initializer specified but declared is not an array" 'int n = {1, 2, 3, 4};'
 
+assert_compile_error "not in while or for loop" 'int main() { continue; }'
+
 # assert_program 0 'int main() {}'
 # assert_program 0 'int main() { return 0; }'
 # assert_program 3 'int main() { int x; x = 3; return x; }'
