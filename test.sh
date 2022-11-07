@@ -255,6 +255,9 @@ assert_compile_error "array initializer specified but declared is not an array" 
 
 assert_compile_error "not in while or for loop" 'int main() { continue; }'
 
+assert_compile_error "either struct name nor members not" 'struct;'
+assert_compile_error "struct Z is not defined" 'struct A { int a; }; int main() { struct Z a; }'
+
 # assert_program 0 'int main() {}'
 # assert_program 0 'int main() { return 0; }'
 # assert_program 3 'int main() { int x; x = 3; return x; }'

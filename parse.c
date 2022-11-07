@@ -12,6 +12,7 @@
 LVar locals_head;
 GVar globals_head;
 StrLit str_lits_head;
+NamedType named_types_head;
 
 // 現在のローカル変数のスコープ
 // いまのとこ ND_FUNCDECL のみ
@@ -76,6 +77,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_BREAK";
   case ND_CONTINUE:
     return "ND_CONTINUE";
+  case ND_NOP:
+    return "ND_NOP";
   }
 
   return "(unknown)";
@@ -112,11 +115,8 @@ static Node *new_node_num(int val) {
   return node;
 }
 
-static LVar *find_lvar(Node *scope, char *name, int len) {
-  assert(scope != NULL);
-  assert(scope->kind == ND_FUNCDECL);
-
-  for (LVar *var = locals_head.next; var; var = var->next) {
+static LVar *find_lvar(LVar *head, Node *scope, char *name, int len) {
+  for (LVar *var = head->next; var; var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len) &&
         var->scope == scope) {
       return var;
@@ -126,14 +126,14 @@ static LVar *find_lvar(Node *scope, char *name, int len) {
   return NULL;
 }
 
-static LVar *add_lvar(Node *scope, char *name, int len, Type *type) {
-  assert(scope != NULL);
-  assert(scope->kind == ND_FUNCDECL);
-
+// locals を共有するために scope を置いてたけど、head を切り替える（そもそも
+// scope ごとに locals を持つ） ことで不要になる予感
+static LVar *add_lvar(LVar *head, Node *scope, char *name, int len,
+                      Type *type) {
   int offset = 8;
 
-  LVar *last_var = NULL;
-  for (LVar *var = locals_head.next; var; last_var = var, var = var->next) {
+  LVar *last = head;
+  for (LVar *var = last->next; var; last = var, var = var->next) {
     if (var->scope == scope) {
       if (var->len == len && !strncmp(var->name, name, len))
         error("variable already defined: '%.*s'", len, name);
@@ -149,11 +149,7 @@ static LVar *add_lvar(Node *scope, char *name, int len, Type *type) {
   var->offset = offset + (sizeof_type(type) + 7) / 8 * 8;
   var->type = type;
 
-  if (last_var) {
-    last_var->next = var;
-  } else {
-    locals_head.next = var;
-  }
+  last->next = var;
 
   return var;
 }
@@ -214,6 +210,35 @@ static StrLit *add_str_lit(char *str, int len) {
   return lit;
 }
 
+static NamedType *find_named_type(NamedTypeKind kind, char *name, int len) {
+  NamedType *last = &named_types_head;
+  for (NamedType *it = last->next; it; last = it, it = it->next) {
+    if (it->kind == kind && it->len == len && !strncmp(it->name, name, len)) {
+      return it;
+    }
+  }
+
+  return NULL;
+}
+
+static NamedType *add_named_type(NamedTypeKind kind, char *name, int len,
+                                 Type *type) {
+  NamedType *last = &named_types_head;
+  for (NamedType *it = last->next; it; last = it, it = it->next) {
+    if (it->kind == kind && it->len == len && !strncmp(it->name, name, len)) {
+      error("type already defined: '%.*s'", len, name);
+    }
+  }
+
+  NamedType *named_type = calloc(1, sizeof(NamedType));
+  named_type->kind = kind;
+  named_type->name = name;
+  named_type->len = len;
+  named_type->type = type;
+
+  return last->next = named_type;
+}
+
 ///// Parser /////
 
 // Syntax:
@@ -221,6 +246,8 @@ static StrLit *add_str_lit(char *str, int len) {
 //    funcdecl    = type ident "(" type expr ("," type expr)* ")"
 //                  "{" stmt* "}"
 //    type        = ("int" | "char") "*"*
+//                | ident
+//                | "struct" ident ("{" (type ident ";")* "}")?
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
@@ -294,7 +321,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    LVar *lvar = find_lvar(curr_func_scope, tok->str, tok->len);
+    LVar *lvar = find_lvar(&locals_head, curr_func_scope, tok->str, tok->len);
     if (lvar) {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
@@ -428,6 +455,12 @@ int sizeof_type(Type *type) {
     return 8;
   case ARRAY:
     return type->array_size * sizeof_type(type->base);
+  case STRUCT: {
+    LVar *m = type->members;
+    while (m && m->next)
+      m = m->next;
+    return m ? m->offset + sizeof_type(m->type) : 0;
+  }
   }
 }
 
@@ -575,10 +608,57 @@ Node *parse_block() {
 
 Type *parse_type() {
   Type *type = calloc(1, sizeof(Type));
+
   if (token_consume_type("int")) {
     type->ty = INT;
   } else if (token_consume_type("char")) {
     type->ty = CHAR;
+  } else if (token_consume(TK_STRUCT)) {
+    type->ty = STRUCT;
+    Token *name = token_consume(TK_IDENT);
+    if (token_consume_punct("{")) {
+      if (token_consume_punct("}")) {
+        // nop
+      } else {
+        // ND_FUNCDECL の場合と似てるかも
+        type->members = calloc(1, sizeof(LVar *));
+        while (true) {
+          Type *member_type = parse_type();
+          if (!member_type) {
+            error("expected member type");
+          }
+
+          Token *member_name = token_consume(TK_IDENT);
+          if (!member_name) {
+            error("expected member name");
+          }
+
+          add_lvar(type->members, NULL, member_name->str, member_name->len,
+                   member_type);
+
+          token_expect_punct(";");
+
+          if (token_consume_punct("}")) {
+            break;
+          }
+        }
+
+        if (name != NULL) {
+          add_named_type(NT_STRUCT, name->str, name->len, type);
+        }
+      }
+    } else if (name != NULL) {
+      // type = "struct A" という感じの
+      // 既存の構造体を参照している
+      NamedType *named_type = find_named_type(NT_STRUCT, name->str, name->len);
+      if (named_type == NULL) {
+        error("struct %.*s is not defined", name->len, name->str);
+      }
+      type = named_type->type;
+    } else {
+      // type = "struct" という感じでおかしい
+      error("either struct name nor members not given");
+    }
   } else {
     return NULL;
   }
@@ -704,7 +784,8 @@ Node *parse_stmt() {
       type = new_type_array_of(type, size);
     }
 
-    LVar *lvar = add_lvar(curr_func_scope, tok_var->str, tok_var->len, type);
+    LVar *lvar = add_lvar(&locals_head, curr_func_scope, tok_var->str,
+                          tok_var->len, type);
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_VARDECL;
@@ -731,15 +812,27 @@ Node *parse_stmt() {
   return node;
 }
 
-Node *parse_funcdecl_or_vardecl() {
+static Node *parse_decl() {
   Type *type = parse_type();
   if (!type) {
-    error("type expected");
+    error("expected typezo");
   }
 
   Token *ident = token_consume(TK_IDENT);
   if (!ident) {
-    error("expected ident");
+    // struct S { int i; }; など識別子が登場しない場合、たぶん型の宣言
+    //
+    if (type->ty == STRUCT) {
+      token_expect_punct(";");
+
+      // じつはここでもう処理は済んでしまっている
+      // 適当に無害な Node を作って返す
+      Node *node = calloc(1, sizeof(Node));
+      node->kind = ND_NOP;
+      return node;
+    } else {
+      error("expected declaration name");
+    }
   }
 
   Node *node = calloc(1, sizeof(Node));
@@ -759,17 +852,18 @@ Node *parse_funcdecl_or_vardecl() {
       while (true) {
         Type *type = parse_type();
         if (!type) {
-          error("type expected");
+          error("expected argument type");
         }
 
         Token *tok = token_consume(TK_IDENT);
         if (!tok) {
-          error("expected ident");
+          error("expected argument name");
         }
 
         Node *ident = calloc(1, sizeof(Node));
         ident->kind = ND_LVAR;
-        LVar *lvar = add_lvar(curr_func_scope, tok->str, tok->len, type);
+        LVar *lvar =
+            add_lvar(&locals_head, curr_func_scope, tok->str, tok->len, type);
         ident->lvar = lvar;
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
@@ -857,7 +951,7 @@ Node *code[100]; // FIXME
 void parse_program() {
   int i = 0;
   while (!token_at_eof()) {
-    code[i++] = parse_funcdecl_or_vardecl();
+    code[i++] = parse_decl();
   }
   code[i] = NULL;
 

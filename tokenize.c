@@ -173,6 +173,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("struct", p, 6) == 0 && !isident(p[6])) {
+      cur = new_token(TK_STRUCT, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
     if (strncmp("int", p, 3) == 0 && !isident(p[3])) {
       cur = new_token(TK_TYPE, cur, p, 3);
       p += 3;
@@ -185,7 +191,7 @@ void tokenize(char *p) {
       continue;
     }
 
-    if (('a' <= *p && *p <= 'z') || *p == '_') {
+    if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z') || *p == '_') {
       int n = 1;
       while (*(p + n) && isident(*(p + n))) {
         n++;

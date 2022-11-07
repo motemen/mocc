@@ -10,10 +10,27 @@ typedef struct GVar GVar;
 typedef struct StrLit StrLit;
 
 struct Type {
-  enum { CHAR, INT, PTR, ARRAY } ty;
+  enum { CHAR, INT, PTR, ARRAY, STRUCT } ty;
   Type *base;
 
-  size_t array_size; // ty==ARRAY のときのみ
+  size_t array_size; // ty == ARRAY
+  LVar *members;     // ty == STRUCT
+};
+
+typedef struct NamedType NamedType;
+
+typedef enum {
+  NT_STRUCT,
+} NamedTypeKind;
+
+struct NamedType {
+  NamedType *next;
+  Type *type;
+
+  char *name;
+  int len; // name の長さ
+
+  NamedTypeKind kind; // ここに enum とか typedef が登場する予定
 };
 
 struct LVar {
@@ -68,6 +85,7 @@ typedef enum {
   ND_STRING,
   ND_BREAK,
   ND_CONTINUE,
+  ND_NOP,
 } NodeKind;
 
 struct Node {

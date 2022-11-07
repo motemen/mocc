@@ -443,6 +443,9 @@ static void codegen_expr(Node *node) {
   case ND_BREAK:
   case ND_CONTINUE:
     break;
+
+  case ND_NOP:
+    return;
   }
 
   error_at(node->source_pos, "not an expression: %s",
@@ -741,6 +744,9 @@ static bool codegen_node(Node *node) {
 
     return false;
   }
+
+  case ND_NOP:
+    return false;
   }
 
   error_at(node->source_pos, "codegen not implemented: %s",
