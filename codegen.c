@@ -42,7 +42,7 @@ static int max_lvar_offset(Node *scope) {
   int max = 0;
 
   LVar *last_lvar = NULL;
-  for (LVar *lvar = locals; lvar; lvar = lvar->next) {
+  for (LVar *lvar = locals_head.next; lvar; lvar = lvar->next) {
     if (lvar->scope == scope) {
       // 常にあとのほうが offset でかいはずなのでこれでよい
       last_lvar = lvar;
@@ -69,13 +69,6 @@ static void codegen_prologue(Node *scope) {
 
 // a0 に返り値を設定してから呼ぶこと
 static void codegen_epilogue(Node *scope) {
-  int num_locals = 0;
-  LVar *l = locals;
-  while (l) {
-    num_locals++;
-    l = l->next;
-  }
-
   printf("\n");
   printf("  # Epilogue\n");
   // sp を戻す
@@ -458,7 +451,7 @@ static void codegen_expr(Node *node) {
 
 void codegen_preamble() {
   printf("  .section .rodata\n");
-  for (StrLit *lit = str_lits; lit; lit = lit->next) {
+  for (StrLit *lit = str_lits_head.next; lit; lit = lit->next) {
     printf(".LC%d:\n", lit->index);
     printf("  .string \"%.*s\"\n", lit->len, lit->str);
   }

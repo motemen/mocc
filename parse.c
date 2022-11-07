@@ -9,9 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-LVar *locals;
-GVar *globals;
-StrLit *str_lits;
+LVar locals_head;
+GVar globals_head;
+StrLit str_lits_head;
 
 // 現在のローカル変数のスコープ
 // いまのとこ ND_FUNCDECL のみ
@@ -116,8 +116,7 @@ static LVar *find_lvar(Node *scope, char *name, int len) {
   assert(scope != NULL);
   assert(scope->kind == ND_FUNCDECL);
 
-  LVar *last_var = locals;
-  for (LVar *var = locals; var; last_var = var, var = var->next) {
+  for (LVar *var = locals_head.next; var; var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len) &&
         var->scope == scope) {
       return var;
@@ -131,20 +130,15 @@ static LVar *add_lvar(Node *scope, char *name, int len, Type *type) {
   assert(scope != NULL);
   assert(scope->kind == ND_FUNCDECL);
 
-  LVar *last_var = locals;
   int offset = 8;
-  for (LVar *var = locals; var; last_var = var, var = var->next) {
-    if (var->len == len && !strncmp(var->name, name, len) &&
-        var->scope == scope) {
-      error("variable already defined: '%.*s'", len, name);
-    }
+
+  LVar *last_var = NULL;
+  for (LVar *var = locals_head.next; var; last_var = var, var = var->next) {
     if (var->scope == scope) {
+      if (var->len == len && !strncmp(var->name, name, len))
+        error("variable already defined: '%.*s'", len, name);
+
       offset = var->offset;
-      // if (var->type->ty == ARRAY) {
-      //   offset += 8 * var->type->array_size;
-      // } else {
-      //   offset += 8;
-      // }
     }
   }
 
@@ -158,14 +152,14 @@ static LVar *add_lvar(Node *scope, char *name, int len, Type *type) {
   if (last_var) {
     last_var->next = var;
   } else {
-    locals = var;
+    locals_head.next = var;
   }
 
   return var;
 }
 
 static GVar *find_gvar(char *name, int len) {
-  for (GVar *var = globals; var; var = var->next) {
+  for (GVar *var = globals_head.next; var; var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
       return var;
     }
@@ -175,8 +169,8 @@ static GVar *find_gvar(char *name, int len) {
 }
 
 static GVar *add_gvar(char *name, int len, Type *type) {
-  GVar *last_var = globals;
-  for (GVar *var = globals; var; last_var = var, var = var->next) {
+  GVar *last_var = NULL;
+  for (GVar *var = globals_head.next; var; last_var = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
       error("global variable already defined: '%.*s'", len, name);
     }
@@ -190,16 +184,16 @@ static GVar *add_gvar(char *name, int len, Type *type) {
   if (last_var) {
     last_var->next = var;
   } else {
-    globals = var;
+    globals_head.next = var;
   }
 
   return var;
 }
 
 static StrLit *add_str_lit(char *str, int len) {
-  StrLit *last = str_lits;
   int index = 0;
-  for (StrLit *lit = str_lits; lit; last = lit, lit = lit->next) {
+  StrLit *last = NULL;
+  for (StrLit *lit = str_lits_head.next; lit; last = lit, lit = lit->next) {
     if (lit->len == len && !strncmp(lit->str, str, len)) {
       return lit;
     }
@@ -214,7 +208,7 @@ static StrLit *add_str_lit(char *str, int len) {
   if (last) {
     last->next = lit;
   } else {
-    str_lits = lit;
+    str_lits_head.next = lit;
   }
 
   return lit;

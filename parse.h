@@ -126,5 +126,5 @@ Type *typeof_node(Node *node);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 char *type_to_str(Type *type);
 
-extern LVar *locals;
-extern StrLit *str_lits;
+extern LVar locals_head;
+extern StrLit str_lits_head;
