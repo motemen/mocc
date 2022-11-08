@@ -80,26 +80,28 @@ static void codegen_epilogue(Node *scope) {
 
 Scope *curr_scope;
 
-static void scope_create(Node *node) {
+void scope_create(Node *node) {
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
   curr_scope = scope;
 }
 
-static void scope_push(Node *node) {
+void scope_push(Node *node) {
   assert(curr_scope != NULL);
+  assert(node->locals != NULL); // TODO: locals
+                                // はここで作られるということにしたほうがいいきもする。むしろ
+                                // assert(node->locals == NULL)
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
+  scope->node->locals->offset = max_lvar_offset(curr_scope->node);
   scope->parent = curr_scope;
   curr_scope = scope;
 }
 
-static void scope_pop() {
+void scope_pop() {
   assert(curr_scope != NULL);
   curr_scope = curr_scope->parent;
-  if (curr_scope == NULL) {
-    assert(curr_scope != NULL);
-  }
+  assert(curr_scope != NULL);
 }
 
 static Scope *scope_find(NodeKind kind) {

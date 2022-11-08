@@ -95,6 +95,12 @@ struct Scope {
   // ここにブロック中のローカル変数も出てくるかもしれない
 };
 
+extern Scope *curr_scope;
+
+void scope_create(Node *node);
+void scope_push(Node *node);
+void scope_pop();
+
 void parse_program();
 extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
@@ -185,6 +191,7 @@ char *type_to_string(Type *type);
 
 Var *add_var(Var *head, char *name, int len, Type *type);
 Var *find_var(Var *head, char *name, int len);
+Var *find_var_in_curr_scope(char *name, int len);
 
 String *add_string(char *str, int len);
 

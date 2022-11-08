@@ -7,11 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// 現在のローカル変数のスコープ
-// いまのとこ ND_FUNCDECL のみ
-// 必要になったら Scope にする
-Node *curr_func_scope;
-
 int label_index = 0;
 
 char *node_kind_to_str(NodeKind kind) {
@@ -109,7 +104,7 @@ static Node *new_node_num(int val) {
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
 //                | "while" "(" expr ")" stmt
-//                | "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//                | "for" "(" (vardecl | expr)? ";" expr? ";" expr? ")" stmt
 //                | "{" stmt* "}"
 //                | "break" ";"
 //                | vardecl ";"
@@ -179,7 +174,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    Var *lvar = find_var(curr_func_scope->locals, tok->str, tok->len);
+    Var *lvar = find_var_in_curr_scope(tok->str, tok->len);
     if (lvar) {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
@@ -219,8 +214,12 @@ static Node *parse_primary() {
     return node;
   }
 
-  int val = token_expect_number();
-  return new_node_num(val);
+  tok = token_consume(TK_NUM);
+  if (tok != NULL) {
+    return new_node_num(tok->val);
+  }
+
+  error("expected primary: () or ident or string or number");
 }
 
 Type int_type = {TY_INT, NULL};
@@ -526,7 +525,7 @@ Type *parse_type() {
 
     if (token_consume_punct("{")) {
       // ND_FUNCDECL の場合と似てるかも
-      type->members = calloc(1, sizeof(Var *));
+      type->members = calloc(1, sizeof(Var));
       while (true) {
         Type *member_type = parse_type();
         if (!member_type) {
@@ -573,6 +572,41 @@ Type *parse_type() {
   return type;
 }
 
+static Node *parse_vardecl() {
+  Type *type = parse_type();
+  if (type == NULL)
+    return NULL;
+
+  Token *tok_var = token_consume(TK_IDENT);
+  if (!tok_var) {
+    error("expected variable name");
+  }
+
+  while (token_consume_punct("[")) {
+    int size = token_expect_number();
+    token_expect_punct("]");
+
+    type = new_type_array_of(type, size);
+  }
+
+  Var *lvar =
+      add_var(curr_scope->node->locals, tok_var->str, tok_var->len, type);
+
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_VARDECL;
+  node->lvar = lvar;
+  node->source_pos = tok_var->str;
+  node->source_len = tok_var->len;
+
+  if (token_consume_punct("=")) {
+    node->rhs = parse_expr();
+  }
+
+  token_expect_punct(";");
+
+  return node;
+}
+
 Node *parse_stmt() {
   if (token_consume(TK_RETURN) != NULL) {
     Node *node = calloc(1, sizeof(Node));
@@ -610,6 +644,7 @@ Node *parse_stmt() {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_WHILE;
     node->label_index = ++label_index;
+    node->locals = calloc(1, sizeof(Var));
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
     token_expect_punct("(");
@@ -626,11 +661,18 @@ Node *parse_stmt() {
     node->label_index = ++label_index;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
+    node->locals = calloc(1, sizeof(Var));
+
+    scope_push(node);
+
     token_expect_punct("(");
 
     if (!token_consume_punct(";")) {
-      node->lhs = parse_expr();
-      token_expect_punct(";");
+      node->lhs = parse_vardecl();
+      if (node->lhs == NULL) {
+        node->lhs = parse_expr();
+        token_expect_punct(";");
+      }
     }
 
     if (!token_consume_punct(";")) {
@@ -646,6 +688,8 @@ Node *parse_stmt() {
     if (!token_consume_punct(";")) {
       node->node4 = parse_stmt();
     }
+
+    scope_pop();
 
     return node;
   }
@@ -668,46 +712,19 @@ Node *parse_stmt() {
     return node;
   }
 
-  // parse_vardecl
-  Type *type = parse_type();
-  if (type) {
-    Token *tok_var = token_consume(TK_IDENT);
-    if (!tok_var) {
-      error("expected variable name");
-    }
-
-    while (token_consume_punct("[")) {
-      int size = token_expect_number();
-      token_expect_punct("]");
-
-      type = new_type_array_of(type, size);
-    }
-
-    Var *lvar =
-        add_var(curr_func_scope->locals, tok_var->str, tok_var->len, type);
-
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_VARDECL;
-    node->lvar = lvar;
-    node->source_pos = tok_var->str;
-    node->source_len = tok_var->len;
-
-    if (token_consume_punct("=")) {
-      node->rhs = parse_expr();
-    }
-
-    token_expect_punct(";");
-
+  Node *node = parse_vardecl();
+  if (node != NULL) {
     return node;
   }
 
-  Node *block = parse_block();
-  if (block) {
-    return block;
+  node = parse_block();
+  if (node != NULL) {
+    return node;
   }
 
-  Node *node = parse_expr();
+  node = parse_expr();
   token_expect_punct(";");
+
   return node;
 }
 
@@ -739,9 +756,9 @@ static Node *parse_decl() {
   node->ident = ident;
   node->source_pos = ident->str;
   node->source_len = ident->len;
-  node->locals = calloc(1, sizeof(Var *));
+  node->locals = calloc(1, sizeof(Var));
 
-  curr_func_scope = node;
+  scope_create(node);
 
   if (token_consume_punct("(")) {
     if (token_consume_punct(")")) {
@@ -762,7 +779,7 @@ static Node *parse_decl() {
 
         Node *ident = calloc(1, sizeof(Node));
         ident->kind = ND_LVAR;
-        Var *lvar = add_var(curr_func_scope->locals, tok->str, tok->len, type);
+        Var *lvar = add_var(curr_scope->node->locals, tok->str, tok->len, type);
         ident->lvar = lvar;
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
@@ -791,7 +808,7 @@ static Node *parse_decl() {
 
     node->nodes = block->nodes;
 
-    curr_func_scope = NULL;
+    curr_scope = NULL;
 
     return node;
   }

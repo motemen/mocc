@@ -198,8 +198,7 @@ int test_for_while() {
   printf("# for while\n");
 
   int sum = 0;
-  int n;
-  for (n = 1; n <= 10; n = n + 1) {
+  for (int n = 1; n <= 10; n = n + 1) {
     sum = sum + n;
   }
   is(55, sum, "for 1+..+10");
@@ -210,7 +209,7 @@ int test_for_while() {
   is(1024, x, "for(;x<1000;) x=x*2;");
 
   sum = 0;
-  for (n = 1; n < 10; n = n + 1) {
+  for (int n = 1; n < 10; n = n + 1) {
     sum = sum + n;
     if (sum > 10)
       break;
@@ -218,7 +217,7 @@ int test_for_while() {
   is(15, sum, "for 1+..+9, break at > 10");
 
   sum = 0;
-  n = 1;
+  int n = 1;
   while (n <= 10) {
     sum = sum + n;
     n = n + 1;

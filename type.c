@@ -26,6 +26,17 @@ char *type_to_string(Type *type) {
   return "(unknown)";
 }
 
+Var *find_var_in_curr_scope(char *name, int len) {
+  for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+    Var *var = find_var(scope->node->locals, name, len);
+    if (var != NULL) {
+      return var;
+    }
+  }
+
+  return NULL;
+}
+
 Var *find_var(Var *head, char *name, int len) {
   for (Var *var = head->next; var; var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
@@ -39,8 +50,7 @@ Var *find_var(Var *head, char *name, int len) {
 // locals を共有するために scope を置いてたけど、head を切り替える（そもそも
 // scope ごとに locals を持つ） ことで不要になる予感
 Var *add_var(Var *head, char *name, int len, Type *type) {
-  int offset = 8;
-
+  int offset = head->offset;
   Var *last = head;
   for (Var *var = last->next; var; last = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len))

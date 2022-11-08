@@ -43,7 +43,7 @@ bool token_at_eof() { return curr_token->kind == TK_EOF; }
 
 void token_expect_punct(char *op) {
   if (!token_consume_punct(op)) {
-    error("token_expect_punct: not '%s'", op);
+    error("expected '%s'", op);
   }
 }
 
