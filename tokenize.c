@@ -1,4 +1,4 @@
-#include "9cv.h"
+#include "mocc.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>

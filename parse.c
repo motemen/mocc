@@ -1,4 +1,4 @@
-#include "9cv.h"
+#include "mocc.h"
 #include "util.h"
 #include <assert.h>
 #include <ctype.h>

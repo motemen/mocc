@@ -1,4 +1,4 @@
-#include "9cv.h"
+#include "mocc.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
