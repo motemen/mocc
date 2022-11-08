@@ -1,61 +1,13 @@
-#include "tokenize.h"
-#include <stdbool.h>
-#include <stddef.h>
+#ifndef _PARSE_H_
+#define _PARSE_H_
 
-typedef struct Type Type;
 typedef struct NodeList NodeList;
 typedef struct Node Node;
-typedef struct LVar LVar;
-typedef struct GVar GVar;
-typedef struct StrLit StrLit;
 
-struct Type {
-  enum { CHAR, INT, PTR, ARRAY, STRUCT } ty;
-  Type *base;
-
-  size_t array_size; // ty == ARRAY
-  LVar *members;     // ty == STRUCT
-};
-
-typedef struct NamedType NamedType;
-
-typedef enum {
-  NT_STRUCT,
-} NamedTypeKind;
-
-struct NamedType {
-  NamedType *next;
-  Type *type;
-
-  char *name;
-  int len; // name の長さ
-
-  NamedTypeKind kind; // ここに enum とか typedef が登場する予定
-};
-
-struct LVar {
-  LVar *next;
-  char *name;
-  int len; // name の長さ
-  Node *scope;
-  Type *type;
-  int offset; // メモリ上のオフセット。fp からの位置
-};
-
-struct GVar {
-  GVar *next;
-  char *name;
-  int len; // name の長さ
-  Type *type;
-};
-
-// 文字列リテラル!!!
-struct StrLit {
-  StrLit *next;
-  char *str;
-  int len;
-  int index;
-};
+#include "tokenize.h"
+#include "type.h"
+#include <stdbool.h>
+#include <stddef.h>
 
 typedef enum {
   ND_ADD,   // +
@@ -140,11 +92,8 @@ struct Scope {
 void parse_program();
 extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
-int sizeof_type(Type *type);
-Type *typeof_node(Node *node);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 char *type_to_str(Type *type);
 LVar *find_lvar(LVar *head, Node *scope, char *name, int len);
 
-extern LVar locals_head;
-extern StrLit str_lits_head;
+#endif
