@@ -2,13 +2,14 @@
 
 #include "parse.h"
 #include "util.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 Var globals;
 String strings;
-NamedType named_types;
+Type defined_types;
 
 char *type_to_string(Type *type) {
   char *buf = calloc(80, sizeof(char));
@@ -78,32 +79,25 @@ String *add_string(char *str, int len) {
   return last->next = lit;
 }
 
-NamedType *find_named_type(NamedTypeKind kind, char *name, int len) {
-  NamedType *last = &named_types;
-  for (NamedType *it = last->next; it; last = it, it = it->next) {
-    if (it->kind == kind && it->len == len && !strncmp(it->name, name, len)) {
+Type *add_or_find_defined_type(Type *type) {
+  assert(type->ty == STRUCT); // TODO: TYPEDEF とかもくる予定
+  assert(type->name != NULL);
+
+  Type *last = &defined_types;
+  for (Type *it = last->next; it; last = it, it = it->next) {
+    if (it->name_len == type->name_len &&
+        strncmp(it->name, type->name, type->name_len) == 0) {
+      if (type->members != NULL) {
+        if (it->members != NULL) {
+          error("type already defined: '%.*s'", type->name_len, type->name);
+        }
+        it->members = type->members;
+      }
       return it;
     }
   }
 
-  return NULL;
-}
-
-NamedType *add_named_type(NamedTypeKind kind, char *name, int len, Type *type) {
-  NamedType *last = &named_types;
-  for (NamedType *it = last->next; it; last = it, it = it->next) {
-    if (it->kind == kind && it->len == len && !strncmp(it->name, name, len)) {
-      error("type already defined: '%.*s'", len, name);
-    }
-  }
-
-  NamedType *named_type = calloc(1, sizeof(NamedType));
-  named_type->kind = kind;
-  named_type->name = name;
-  named_type->len = len;
-  named_type->type = type;
-
-  return last->next = named_type;
+  return last->next = type;
 }
 
 Var *find_member(Node *node) {

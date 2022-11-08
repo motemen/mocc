@@ -8,29 +8,22 @@ typedef struct Type Type;
 typedef struct Var Var;
 typedef struct String String;
 
+typedef enum TypeKind { CHAR, INT, PTR, ARRAY, STRUCT } TypeKind;
+
 struct Type {
-  enum { CHAR, INT, PTR, ARRAY, STRUCT } ty;
+  TypeKind ty;
   Type *base;
+  Type *next;
 
   size_t array_size; // ty == ARRAY
   Var *members;      // ty == STRUCT
-};
 
-typedef struct NamedType NamedType;
-
-typedef enum {
-  NT_STRUCT,
-} NamedTypeKind;
-
-struct NamedType {
-  NamedType *next;
-  Type *type;
-
+  // 定義されたものはこれ
   char *name;
-  int len; // name の長さ
-
-  NamedTypeKind kind; // ここに enum とか typedef が登場する予定
+  int name_len; // name の長さ
 };
+
+extern Type defined_types;
 
 struct Var {
   Var *next;
@@ -61,7 +54,6 @@ Var *find_var(Var *head, char *name, int len);
 
 String *add_string(char *str, int len);
 
-NamedType *add_named_type(NamedTypeKind kind, char *name, int len, Type *type);
-NamedType *find_named_type(NamedTypeKind kind, char *name, int len);
+Type *add_or_find_defined_type(Type *type);
 
 #endif

@@ -1,6 +1,7 @@
 #include "parse.h"
 #include "9cv.h"
 #include "tokenize.h"
+#include "type.h"
 #include "util.h"
 #include <assert.h>
 #include <ctype.h>
@@ -327,7 +328,10 @@ int sizeof_type(Type *type) {
     return type->array_size * sizeof_type(type->base);
   case STRUCT: {
     Var *m = type->members;
-    while (m && m->next)
+    if (m == NULL) {
+      error("sizeof: empty struct");
+    }
+    while (m->next)
       m = m->next;
     return m ? m->offset + sizeof_type(m->type) : 0;
   }
@@ -516,46 +520,43 @@ Type *parse_type() {
     type->ty = CHAR;
   } else if (token_consume(TK_STRUCT)) {
     type->ty = STRUCT;
+
     Token *name = token_consume(TK_IDENT);
+    if (name != NULL) {
+      type->name = name->str;
+      type->name_len = name->len;
+    }
+
     if (token_consume_punct("{")) {
-      if (token_consume_punct("}")) {
-        // nop
-      } else {
-        // ND_FUNCDECL の場合と似てるかも
-        type->members = calloc(1, sizeof(Var *));
-        while (true) {
-          Type *member_type = parse_type();
-          if (!member_type) {
-            error("expected member type");
-          }
-
-          Token *member_name = token_consume(TK_IDENT);
-          if (!member_name) {
-            error("expected member name");
-          }
-
-          add_var(type->members, member_name->str, member_name->len,
-                  member_type);
-
-          token_expect_punct(";");
-
-          if (token_consume_punct("}")) {
-            break;
-          }
+      // ND_FUNCDECL の場合と似てるかも
+      type->members = calloc(1, sizeof(Var *));
+      while (true) {
+        Type *member_type = parse_type();
+        if (!member_type) {
+          error("expected member type");
         }
 
-        if (name != NULL) {
-          add_named_type(NT_STRUCT, name->str, name->len, type);
+        Token *member_name = token_consume(TK_IDENT);
+        if (!member_name) {
+          error("expected member name");
         }
+
+        add_var(type->members, member_name->str, member_name->len, member_type);
+
+        token_expect_punct(";");
+
+        if (token_consume_punct("}")) {
+          break;
+        }
+      }
+
+      if (name != NULL) {
+        type = add_or_find_defined_type(type);
       }
     } else if (name != NULL) {
-      // type = "struct A" という感じの
-      // 既存の構造体を参照している
-      NamedType *named_type = find_named_type(NT_STRUCT, name->str, name->len);
-      if (named_type == NULL) {
-        error("struct %.*s is not defined", name->len, name->str);
-      }
-      type = named_type->type;
+      // type = "struct A" という感じで本体がない
+      // 先行定義？ か既存の構造体を参照しているかどっちか
+      type = add_or_find_defined_type(type);
     } else {
       // type = "struct" という感じでおかしい
       error("either struct name nor members not given");
@@ -716,7 +717,7 @@ Node *parse_stmt() {
 static Node *parse_decl() {
   Type *type = parse_type();
   if (!type) {
-    error("expected typezo");
+    error("expected type");
   }
 
   Token *ident = token_consume(TK_IDENT);
