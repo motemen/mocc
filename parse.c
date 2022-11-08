@@ -442,6 +442,17 @@ Type *typeof_node(Node *node) {
   case ND_GVAR:
     return node->gvar->type;
 
+  case ND_MEMBER: {
+    Type *type = typeof_node(node->lhs);
+    if (type->ty != STRUCT) {
+      error_at(node->source_pos, "not a struct");
+    }
+
+    LVar *member =
+        find_lvar(type->members, NULL, node->ident->str, node->ident->len);
+    return member->type;
+  }
+
   default:
     error_at(node->source_pos, "typeof_node: unimplemented: %s",
              node_kind_to_str(node->kind));
@@ -470,19 +481,36 @@ int sizeof_type(Type *type) {
 static Node *parse_postfix() {
   Node *node = parse_primary();
 
-  while (token_consume_punct("[")) {
-    Node *expr = parse_expr();
-    token_expect_punct("]");
-    node = new_node(ND_DEREF, new_node(ND_ADD, node, expr), NULL);
-  }
-
-  while (token_consume_punct(".")) {
-    Token *ident = token_consume(TK_IDENT);
-    if (ident == NULL) {
-      error("expected identifier after '.'");
+  for (;;) {
+    if (token_consume_punct("[")) {
+      Node *expr = parse_expr();
+      token_expect_punct("]");
+      node = new_node(ND_DEREF, new_node(ND_ADD, node, expr), NULL);
+      continue;
     }
-    node = new_node(ND_MEMBER, node, NULL);
-    node->ident = ident;
+
+    if (token_consume_punct(".")) {
+      Token *ident = token_consume(TK_IDENT);
+      if (ident == NULL) {
+        error("expected identifier after '.'");
+      }
+      node = new_node(ND_MEMBER, node, NULL);
+      node->ident = ident;
+      continue;
+    }
+
+    if (token_consume_punct("->")) {
+      Token *ident = token_consume(TK_IDENT);
+      if (ident == NULL) {
+        error("expected identifier after '.'");
+      }
+      Node *lhs = new_node(ND_DEREF, node, NULL);
+      node = new_node(ND_MEMBER, lhs, NULL);
+      node->ident = ident;
+      continue;
+    }
+
+    break;
   }
 
   return node;

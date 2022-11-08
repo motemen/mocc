@@ -149,6 +149,24 @@ static void codegen_push_lvalue(Node *node) {
     return;
   }
 
+  if (node->kind == ND_MEMBER) {
+    Type *type = typeof_node(node->lhs);
+    LVar *member =
+        find_lvar(type->members, NULL, node->ident->str, node->ident->len);
+    if (member == NULL) {
+      error("member not found: %.*s on (%s)", node->ident->len,
+            node->ident->str, type_to_str(type));
+    }
+
+    codegen_push_lvalue(node->lhs);
+    codegen_pop_t0();
+    printf("  # (lvalue) address for member '%.*s'\n", node->ident->len,
+           node->ident->str);
+    printf("  addi t0, t0, %d\n", member->offset);
+    codegen_push_t0();
+    return;
+  }
+
   error_at(node->source_pos, "not an lvalue: %s", node_kind_to_str(node->kind));
 }
 
@@ -277,7 +295,8 @@ static void codegen_expr(Node *node) {
     if (node->lvar->type->ty == ARRAY) {
       // 配列の場合は先頭要素へのポインタに変換されるのでアドレスを push
       // sizeof, & の場合だけ例外だがそれはそちら側で処理されてる。はず。
-      printf("  add t0, fp, -%d\n", node->lvar->offset);
+      // ここ add でも通ってたけどいいのか？？
+      printf("  addi t0, fp, -%d\n", node->lvar->offset);
     } else {
       int size = sizeof_type(node->lvar->type);
 
@@ -435,25 +454,27 @@ static void codegen_expr(Node *node) {
     codegen_push_lvalue(node->lhs);
     codegen_pop_t0();
     printf("  # address for member '%.*s'\n", member->len, member->name);
-    printf("  addi t0, t0, %d\n", member->offset);
 
-    // TODO: 配列の場合？
     // TODO: ND_LVAR とだいぶ似てる
-    int size = sizeof_type(member->type);
+    if (member->type->ty == ARRAY) {
+      printf("  addi t0, t0, %d\n", member->offset);
+    } else {
+      int size = sizeof_type(member->type);
 
-    switch (size) {
-    case 1:
-      printf("  lb t0, 0(t0)\n");
-      break;
-    case 4:
-      printf("  lw t0, 0(t0)\n");
-      break;
-    case 8:
-      printf("  ld t0, 0(t0)\n");
-      break;
+      switch (size) {
+      case 1:
+        printf("  lb t0, %d(t0)\n", member->offset);
+        break;
+      case 4:
+        printf("  lw t0, %d(t0)\n", member->offset);
+        break;
+      case 8:
+        printf("  ld t0, %d(t0)\n", member->offset);
+        break;
 
-    default:
-      error("unknown size of memer: (%s)", type_to_str(member->type));
+      default:
+        error("unknown size of member: (%s)", type_to_str(member->type));
+      }
     }
 
     codegen_push_t0();

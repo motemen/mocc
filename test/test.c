@@ -148,6 +148,10 @@ int test_array() {
   is(12345, a[0], "*a = 12345; a[0]");
   is(12345, *a, "*a = 12345; *a");
 
+  int *p = a;
+  is(12345, *p, "int *p = a; *p");
+  is(999, *(p + 50), "int *p = a; *(p+50)");
+
   int mat[11][13];
   mat[9][11] = 4567;
   is(4567, mat[9][11], "mat[9][11] = 4567; mat[9][11]");
@@ -283,5 +287,14 @@ int test_var() {
 
 int test_struct() {
   struct Struct1 s1;
+  struct Struct1 *sp = &s1;
   is(0, s1.a, "struct Struct1 s1; s1.a");
+  s1.a = 100;
+  is(100, s1.a, "s1.a = 100; s1.a");
+  s1.s = "foobar";
+  is(98, s1.s[3], "s1.s = 'foobar'; s1.s[3]");
+  is(100, sp->a, "sp->a");
+
+  char *p = s1.s;
+  is(111, p[1], "p = s1.s; p[1]");
 }
