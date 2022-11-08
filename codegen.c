@@ -41,12 +41,10 @@ static void codegen_push_t0() {
 static int max_lvar_offset(Node *scope) {
   int max = 0;
 
-  LVar *last_lvar = NULL;
-  for (LVar *lvar = locals_head.next; lvar; lvar = lvar->next) {
-    if (lvar->scope == scope) {
-      // 常にあとのほうが offset でかいはずなのでこれでよい
-      last_lvar = lvar;
-    }
+  Var *last_lvar = NULL;
+  for (Var *lvar = scope->locals->next; lvar; lvar = lvar->next) {
+    // 常にあとのほうが offset でかいはずなのでこれでよい
+    last_lvar = lvar;
   }
 
   if (!last_lvar) {
@@ -119,7 +117,7 @@ static Scope *scope_find(NodeKind kind) {
 
 static void codegen_expr(Node *node);
 
-// LVar である node のアドレスを push する
+// Var である node のアドレスを push する
 // または、ポインタの deref を計算してアドレスを push する
 static void codegen_push_lvalue(Node *node) {
   if (node->kind == ND_LVAR) {
@@ -135,7 +133,7 @@ static void codegen_push_lvalue(Node *node) {
   // **z -> (*z) の値をアドレスとして push する
   if (node->kind == ND_DEREF) {
     printf("  # (lvalue) deref address of (%s)\n",
-           type_to_str(typeof_node(node->lhs)));
+           type_to_string(typeof_node(node->lhs)));
     codegen_expr(node->lhs);
     return;
   }
@@ -151,11 +149,10 @@ static void codegen_push_lvalue(Node *node) {
 
   if (node->kind == ND_MEMBER) {
     Type *type = typeof_node(node->lhs);
-    LVar *member =
-        find_lvar(type->members, NULL, node->ident->str, node->ident->len);
+    Var *member = find_var(type->members, node->ident->str, node->ident->len);
     if (member == NULL) {
       error("member not found: %.*s on (%s)", node->ident->len,
-            node->ident->str, type_to_str(type));
+            node->ident->str, type_to_string(type));
     }
 
     codegen_push_lvalue(node->lhs);
@@ -219,7 +216,7 @@ static void codegen_expr(Node *node) {
     codegen_expr(node->rhs); // -> t1
 
     printf("  # pointer arithmetic: ltype=(%s), ptr_size=%d\n",
-           type_to_str(ltype), ptr_size);
+           type_to_string(ltype), ptr_size);
 
     codegen_pop_t1();
     if (ptr_size > 1) {
@@ -313,7 +310,7 @@ static void codegen_expr(Node *node) {
 
       default:
         error("unknown size of lvar: (%s)",
-              type_to_str(typeof_node(node->lhs)));
+              type_to_string(typeof_node(node->lhs)));
       }
     }
     codegen_push_t0();
@@ -344,7 +341,7 @@ static void codegen_expr(Node *node) {
       break;
     default:
       error("unknown size of variable: (%s)",
-            type_to_str(typeof_node(node->lhs)));
+            type_to_string(typeof_node(node->lhs)));
     }
 
     printf("  mv t0, t1\n");
@@ -393,7 +390,7 @@ static void codegen_expr(Node *node) {
 
     codegen_pop_t0();
 
-    printf("  # deref to get (%s)\n", type_to_str(type->base));
+    printf("  # deref to get (%s)\n", type_to_string(type->base));
     switch (size) {
     case 1:
       printf("  lb t0, 0(t0)\n");
@@ -406,7 +403,8 @@ static void codegen_expr(Node *node) {
       break;
 
     default:
-      error("unknown size of deref: (%s)", type_to_str(typeof_node(node->lhs)));
+      error("unknown size of deref: (%s)",
+            type_to_string(typeof_node(node->lhs)));
     }
     codegen_push_t0();
 
@@ -441,14 +439,13 @@ static void codegen_expr(Node *node) {
   case ND_MEMBER: {
     Type *type = typeof_node(node->lhs);
     if (type->ty != STRUCT) {
-      error("not a struct: (%s)", type_to_str(type));
+      error("not a struct: (%s)", type_to_string(type));
     }
 
-    LVar *member =
-        find_lvar(type->members, NULL, node->ident->str, node->ident->len);
+    Var *member = find_var(type->members, node->ident->str, node->ident->len);
     if (member == NULL) {
       error("member not found: %.*s on (%s)", node->ident->len,
-            node->ident->str, type_to_str(type));
+            node->ident->str, type_to_string(type));
     }
 
     codegen_push_lvalue(node->lhs);
@@ -473,7 +470,7 @@ static void codegen_expr(Node *node) {
         break;
 
       default:
-        error("unknown size of member: (%s)", type_to_str(member->type));
+        error("unknown size of member: (%s)", type_to_string(member->type));
       }
     }
 
@@ -502,9 +499,9 @@ static void codegen_expr(Node *node) {
            node_kind_to_str(node->kind));
 }
 
-void codegen_preamble() {
+static void codegen_preamble() {
   printf("  .section .rodata\n");
-  for (StrLit *lit = str_lits_head.next; lit; lit = lit->next) {
+  for (String *lit = strings.next; lit; lit = lit->next) {
     printf(".LC%d:\n", lit->index);
     printf("  .string \"%.*s\"\n", lit->len, lit->str);
   }

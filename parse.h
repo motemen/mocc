@@ -65,10 +65,11 @@ struct Node {
   // これも Func * みたいなものになりそう (cf. lvar, gvar)
   Token *ident;
 
-  int val;    // used when kind == ND_NUM
-              // あと ND_STRING のとき str_lits の index
-  LVar *lvar; // ND_LVAR || ND_VARDECL
-  GVar *gvar; // ND_VARDECL かつトップレベル
+  int val;   // used when kind == ND_NUM
+             // あと ND_STRING のとき str_lits の index
+  Var *lvar; // ND_LVAR || ND_VARDECL
+  Var *gvar; // ND_VARDECL かつトップレベル
+  Var *locals;
 
   int label_index; // ND_WHILE || ND_FOR
 
@@ -94,6 +95,5 @@ extern Node *code[100];
 char *node_kind_to_str(NodeKind kind);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 char *type_to_str(Type *type);
-LVar *find_lvar(LVar *head, Node *scope, char *name, int len);
 
 #endif

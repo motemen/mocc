@@ -179,7 +179,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    LVar *lvar = find_lvar(&locals_head, curr_func_scope, tok->str, tok->len);
+    Var *lvar = find_var(curr_func_scope->locals, tok->str, tok->len);
     if (lvar) {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_LVAR;
@@ -195,7 +195,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    GVar *gvar = find_gvar(tok->str, tok->len);
+    Var *gvar = find_var(&globals, tok->str, tok->len);
     if (gvar) {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_GVAR;
@@ -210,7 +210,7 @@ static Node *parse_primary() {
 
   Token *tok_str = token_consume(TK_STRING);
   if (tok_str) {
-    StrLit *str_lit = add_str_lit(tok_str->str, tok_str->len);
+    String *str_lit = add_string(tok_str->str, tok_str->len);
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_STRING;
     node->val = str_lit->index;
@@ -268,7 +268,7 @@ Type *typeof_node(Node *node) {
 
     error_at(node->source_pos,
              "invalid or unimplemented pointer arithmetic: %s and %s",
-             type_to_str(ltype), type_to_str(rtype));
+             type_to_string(ltype), type_to_string(rtype));
   }
 
   case ND_MUL:
@@ -303,8 +303,7 @@ Type *typeof_node(Node *node) {
       error_at(node->source_pos, "not a struct");
     }
 
-    LVar *member =
-        find_lvar(type->members, NULL, node->ident->str, node->ident->len);
+    Var *member = find_var(type->members, node->ident->str, node->ident->len);
     return member->type;
   }
 
@@ -325,7 +324,7 @@ int sizeof_type(Type *type) {
   case ARRAY:
     return type->array_size * sizeof_type(type->base);
   case STRUCT: {
-    LVar *m = type->members;
+    Var *m = type->members;
     while (m && m->next)
       m = m->next;
     return m ? m->offset + sizeof_type(m->type) : 0;
@@ -516,7 +515,7 @@ Type *parse_type() {
         // nop
       } else {
         // ND_FUNCDECL の場合と似てるかも
-        type->members = calloc(1, sizeof(LVar *));
+        type->members = calloc(1, sizeof(Var *));
         while (true) {
           Type *member_type = parse_type();
           if (!member_type) {
@@ -528,8 +527,8 @@ Type *parse_type() {
             error("expected member name");
           }
 
-          add_lvar(type->members, NULL, member_name->str, member_name->len,
-                   member_type);
+          add_var(type->members, member_name->str, member_name->len,
+                  member_type);
 
           token_expect_punct(";");
 
@@ -679,8 +678,8 @@ Node *parse_stmt() {
       type = new_type_array_of(type, size);
     }
 
-    LVar *lvar = add_lvar(&locals_head, curr_func_scope, tok_var->str,
-                          tok_var->len, type);
+    Var *lvar =
+        add_var(curr_func_scope->locals, tok_var->str, tok_var->len, type);
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_VARDECL;
@@ -735,6 +734,7 @@ static Node *parse_decl() {
   node->ident = ident;
   node->source_pos = ident->str;
   node->source_len = ident->len;
+  node->locals = calloc(1, sizeof(Var *));
 
   curr_func_scope = node;
 
@@ -757,8 +757,7 @@ static Node *parse_decl() {
 
         Node *ident = calloc(1, sizeof(Node));
         ident->kind = ND_LVAR;
-        LVar *lvar =
-            add_lvar(&locals_head, curr_func_scope, tok->str, tok->len, type);
+        Var *lvar = add_var(curr_func_scope->locals, tok->str, tok->len, type);
         ident->lvar = lvar;
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
@@ -835,7 +834,7 @@ static Node *parse_decl() {
 
   token_expect_punct(";");
 
-  GVar *gvar = add_gvar(ident->str, ident->len, type);
+  Var *gvar = add_var(&globals, ident->str, ident->len, type);
   node->gvar = gvar;
 
   return node;

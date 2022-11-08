@@ -5,16 +5,15 @@
 #include <stddef.h>
 
 typedef struct Type Type;
-typedef struct LVar LVar;
-typedef struct GVar GVar;
-typedef struct StrLit StrLit;
+typedef struct Var Var;
+typedef struct String String;
 
 struct Type {
   enum { CHAR, INT, PTR, ARRAY, STRUCT } ty;
   Type *base;
 
   size_t array_size; // ty == ARRAY
-  LVar *members;     // ty == STRUCT
+  Var *members;      // ty == STRUCT
 };
 
 typedef struct NamedType NamedType;
@@ -33,44 +32,36 @@ struct NamedType {
   NamedTypeKind kind; // ここに enum とか typedef が登場する予定
 };
 
-struct LVar {
-  LVar *next;
+struct Var {
+  Var *next;
   char *name;
   int len; // name の長さ
-  Node *scope;
   Type *type;
   int offset; // メモリ上のオフセット。fp からの位置
 };
 
-struct GVar {
-  GVar *next;
-  char *name;
-  int len; // name の長さ
-  Type *type;
-};
-
 // 文字列リテラル!!!
-struct StrLit {
-  StrLit *next;
+struct String {
+  String *next;
   char *str;
   int len;
   int index;
 };
 
-extern LVar locals_head;
-extern StrLit str_lits_head;
+extern Var globals;
+extern String strings;
 
 int sizeof_type(Type *type);
 Type *typeof_node(Node *node);
 
-char *type_to_str(Type *type);
-LVar *find_lvar(LVar *head, Node *scope, char *name, int len);
+char *type_to_string(Type *type);
 
-LVar *add_lvar(LVar *head, Node *scope, char *name, int len, Type *type);
-GVar *find_gvar(char *name, int len);
-GVar *add_gvar(char *name, int len, Type *type);
-StrLit *add_str_lit(char *str, int len);
-NamedType *find_named_type(NamedTypeKind kind, char *name, int len);
+Var *add_var(Var *head, char *name, int len, Type *type);
+Var *find_var(Var *head, char *name, int len);
+
+String *add_string(char *str, int len);
+
 NamedType *add_named_type(NamedTypeKind kind, char *name, int len, Type *type);
+NamedType *find_named_type(NamedTypeKind kind, char *name, int len);
 
 #endif
