@@ -31,6 +31,7 @@ typedef enum {
   ND_FUNCDECL,
   ND_DEREF,   // unary *
   ND_ADDR,    // unary &
+  ND_NOT,     // !
   ND_VARDECL, //
   ND_GVARDECL,
   ND_GVAR,

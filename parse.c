@@ -76,6 +76,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_NOP";
   case ND_MEMBER:
     return "ND_MEMBER";
+  case ND_NOT:
+    return "ND_NOT";
   }
 
   return "(unknown)";
@@ -386,6 +388,11 @@ static Node *parse_unary() {
   if (token_consume_punct("&")) {
     Node *node = parse_unary();
     return new_node(ND_ADDR, node, NULL);
+  }
+
+  if (token_consume_punct("!")) {
+    Node *node = parse_unary();
+    return new_node(ND_NOT, node, NULL);
   }
 
   if (token_consume(TK_SIZEOF) != NULL) {

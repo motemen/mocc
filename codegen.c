@@ -1,5 +1,6 @@
 #include "codegen.h"
 #include "9cv.h"
+#include "parse.h"
 #include "util.h"
 #include <assert.h>
 #include <stdio.h>
@@ -479,6 +480,14 @@ static void codegen_expr(Node *node) {
     return;
   }
 
+  case ND_NOT:
+    codegen_expr(node->lhs);
+    codegen_pop_t0();
+    printf("  seqz t0, t0\n");
+    codegen_push_t0();
+
+    return;
+
   case ND_RETURN:
   case ND_IF:
   case ND_WHILE:
@@ -572,6 +581,7 @@ static bool codegen_node(Node *node) {
   case ND_GVAR:
   case ND_STRING:
   case ND_MEMBER:
+  case ND_NOT:
     codegen_expr(node);
     return true;
 
