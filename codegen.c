@@ -206,7 +206,7 @@ static void codegen_expr(Node *node) {
 
     // TODO: ltype しかみてないけど rtype もみたいよね
     Type *ltype = typeof_node(node->lhs);
-    if (ltype->ty == PTR || ltype->ty == ARRAY) {
+    if (ltype->ty == TY_PTR || ltype->ty == TY_ARRAY) {
       ptr_size = sizeof_type(ltype->base);
     }
 
@@ -287,7 +287,7 @@ static void codegen_expr(Node *node) {
     return;
 
   case ND_LVAR:
-    if (node->lvar->type->ty == ARRAY) {
+    if (node->lvar->type->ty == TY_ARRAY) {
       // 配列の場合は先頭要素へのポインタに変換されるのでアドレスを push
       // sizeof, & の場合だけ例外だがそれはそちら側で処理されてる。はず。
       // ここ add でも通ってたけどいいのか？？
@@ -376,7 +376,7 @@ static void codegen_expr(Node *node) {
   case ND_DEREF: {
     codegen_expr(node->lhs);
 
-    if (typeof_node(node)->ty == ARRAY) {
+    if (typeof_node(node)->ty == TY_ARRAY) {
       // deref した結果が配列の場合はさらにポインタとしてあつかうので
       // push されたアドレスをそのまま返す
       // ややこしすぎでは。なんか別の箇所にまとめられそう
@@ -415,7 +415,7 @@ static void codegen_expr(Node *node) {
     return;
 
   case ND_GVAR:
-    if (node->gvar->type->ty == ARRAY) {
+    if (node->gvar->type->ty == TY_ARRAY) {
       // lvar と同様なんだけどこれこんなにあちこちでやるもんなのか？
       printf("  lui t0, %%hi(%.*s)\n", node->gvar->len, node->gvar->name);
       printf("  addi t0, t0, %%lo(%.*s)\n", node->gvar->len, node->gvar->name);
@@ -436,7 +436,7 @@ static void codegen_expr(Node *node) {
 
   case ND_MEMBER: {
     Type *type = typeof_node(node->lhs);
-    if (type->ty != STRUCT) {
+    if (type->ty != TY_STRUCT) {
       error("not a struct: (%s)", type_to_string(type));
     }
 
@@ -451,7 +451,7 @@ static void codegen_expr(Node *node) {
     printf("  # address for member '%.*s'\n", member->len, member->name);
 
     // TODO: ND_LVAR とだいぶ似てる
-    if (member->type->ty == ARRAY) {
+    if (member->type->ty == TY_ARRAY) {
       printf("  addi t0, t0, %d\n", member->offset);
     } else {
       int size = sizeof_type(member->type);
@@ -752,7 +752,7 @@ static bool codegen_node(Node *node) {
       // TODO: long だったら quad とからしい。dword?
       printf("  .word %d\n", num);
     } else if (node->nodes != NULL) {
-      if (node->gvar->type->ty != ARRAY) {
+      if (node->gvar->type->ty != TY_ARRAY) {
         error("array initializer specified but declared is not an array");
       }
       int len = node->gvar->type->array_size;

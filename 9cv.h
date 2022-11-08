@@ -142,7 +142,7 @@ bool token_at_eof();
 void token_expect_punct(char *op);
 int token_expect_number();
 
-typedef enum TypeKind { CHAR, INT, PTR, ARRAY, STRUCT } TypeKind;
+typedef enum TypeKind { TY_CHAR, TY_INT, TY_PTR, TY_ARRAY, TY_STRUCT } TypeKind;
 
 struct Type {
   TypeKind ty;

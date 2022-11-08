@@ -12,12 +12,12 @@ Type defined_types;
 
 char *type_to_string(Type *type) {
   char *buf = calloc(80, sizeof(char));
-  if (type->ty == INT) {
+  if (type->ty == TY_INT) {
     return "int";
-  } else if (type->ty == PTR) {
+  } else if (type->ty == TY_PTR) {
     snprintf(buf, 80, "ptr to %s", type_to_string(type->base));
     return buf;
-  } else if (type->ty == ARRAY) {
+  } else if (type->ty == TY_ARRAY) {
     snprintf(buf, 80, "array[%ld] of %s", type->array_size,
              type_to_string(type->base));
     return buf;
@@ -79,7 +79,7 @@ String *add_string(char *str, int len) {
 }
 
 Type *add_or_find_defined_type(Type *type) {
-  assert(type->ty == STRUCT); // TODO: TYPEDEF とかもくる予定
+  assert(type->ty == TY_STRUCT); // TODO: TYPEDEF とかもくる予定
   assert(type->name != NULL);
 
   Type *last = &defined_types;
@@ -101,7 +101,7 @@ Type *add_or_find_defined_type(Type *type) {
 
 Var *find_member(Node *node) {
   Type *type = typeof_node(node->lhs);
-  if (type->ty != STRUCT) {
+  if (type->ty != TY_STRUCT) {
     error("not a struct: (%s)", type_to_string(type));
   }
 

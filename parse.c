@@ -223,19 +223,19 @@ static Node *parse_primary() {
   return new_node_num(val);
 }
 
-Type int_type = {INT, NULL};
-Type char_type = {CHAR, NULL};
+Type int_type = {TY_INT, NULL};
+Type char_type = {TY_CHAR, NULL};
 
 static Type *new_type_ptr_to(Type *base) {
   Type *type = calloc(1, sizeof(Type));
-  type->ty = PTR;
+  type->ty = TY_PTR;
   type->base = base;
   return type;
 }
 
 static Type *new_type_array_of(Type *base, int size) {
   Type *type = calloc(1, sizeof(Type));
-  type->ty = ARRAY;
+  type->ty = TY_ARRAY;
   type->base = base;
   type->array_size = size;
   return type;
@@ -251,18 +251,18 @@ Type *typeof_node(Node *node) {
     Type *ltype = typeof_node(node->lhs);
     Type *rtype = typeof_node(node->rhs);
 
-    if (ltype->ty == ARRAY)
+    if (ltype->ty == TY_ARRAY)
       ltype = new_type_ptr_to(ltype->base);
-    if (rtype->ty == ARRAY)
+    if (rtype->ty == TY_ARRAY)
       rtype = new_type_ptr_to(rtype->base);
 
-    if (ltype->ty == INT && rtype->ty == INT) {
+    if (ltype->ty == TY_INT && rtype->ty == TY_INT) {
       return &int_type;
     }
-    if (ltype->ty == PTR && rtype->ty == INT) {
+    if (ltype->ty == TY_PTR && rtype->ty == TY_INT) {
       return ltype;
     }
-    if (ltype->ty == INT && rtype->ty == PTR) {
+    if (ltype->ty == TY_INT && rtype->ty == TY_PTR) {
       return rtype;
     }
 
@@ -284,7 +284,7 @@ Type *typeof_node(Node *node) {
 
   case ND_DEREF: {
     Type *type = typeof_node(node->lhs);
-    if (type->ty == PTR || type->ty == ARRAY) {
+    if (type->ty == TY_PTR || type->ty == TY_ARRAY) {
       return type->base;
     }
 
@@ -299,7 +299,7 @@ Type *typeof_node(Node *node) {
 
   case ND_MEMBER: {
     Type *type = typeof_node(node->lhs);
-    if (type->ty != STRUCT) {
+    if (type->ty != TY_STRUCT) {
       error_at(node->source_pos, "not a struct");
     }
 
@@ -315,15 +315,15 @@ Type *typeof_node(Node *node) {
 
 int sizeof_type(Type *type) {
   switch (type->ty) {
-  case CHAR:
+  case TY_CHAR:
     return 1;
-  case INT:
+  case TY_INT:
     return 4;
-  case PTR:
+  case TY_PTR:
     return 8;
-  case ARRAY:
+  case TY_ARRAY:
     return type->array_size * sizeof_type(type->base);
-  case STRUCT: {
+  case TY_STRUCT: {
     Var *m = type->members;
     if (m == NULL) {
       error("sizeof: empty struct");
@@ -512,11 +512,11 @@ Type *parse_type() {
   Type *type = calloc(1, sizeof(Type));
 
   if (token_consume_type("int")) {
-    type->ty = INT;
+    type->ty = TY_INT;
   } else if (token_consume_type("char")) {
-    type->ty = CHAR;
+    type->ty = TY_CHAR;
   } else if (token_consume(TK_STRUCT)) {
-    type->ty = STRUCT;
+    type->ty = TY_STRUCT;
 
     Token *name = token_consume(TK_IDENT);
     if (name != NULL) {
@@ -564,7 +564,7 @@ Type *parse_type() {
 
   while (token_consume_punct("*")) {
     Type *type_p = calloc(1, sizeof(Type));
-    type_p->ty = PTR;
+    type_p->ty = TY_PTR;
     type_p->base = type;
 
     type = type_p;
@@ -721,7 +721,7 @@ static Node *parse_decl() {
   if (!ident) {
     // struct S { int i; }; など識別子が登場しない場合、たぶん型の宣言
     //
-    if (type->ty == STRUCT) {
+    if (type->ty == TY_STRUCT) {
       token_expect_punct(";");
 
       // じつはここでもう処理は済んでしまっている
