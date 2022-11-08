@@ -1,7 +1,4 @@
-#include "parse.h"
 #include "9cv.h"
-#include "tokenize.h"
-#include "type.h"
 #include "util.h"
 #include <assert.h>
 #include <ctype.h>

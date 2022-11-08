@@ -17,9 +17,9 @@ clean:
 .PHONY: test clean
 
 # cc -MM -MF - *.c
-9cv.o: 9cv.c 9cv.h codegen.h parse.h tokenize.h type.h util.h
-codegen.o: codegen.c codegen.h parse.h tokenize.h type.h 9cv.h util.h
-parse.o: parse.c parse.h tokenize.h type.h 9cv.h util.h
-tokenize.o: tokenize.c tokenize.h util.h
-type.o: type.c parse.h tokenize.h type.h util.h
-util.o: util.c 9cv.h tokenize.h
+9cv.o: 9cv.c 9cv.h
+codegen.o: codegen.c 9cv.h
+parse.o: parse.c 9cv.h
+tokenize.o: tokenize.c 9cv.h
+type.o: type.c 9cv.h
+util.o: util.c 9cv.h

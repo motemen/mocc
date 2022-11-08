@@ -1,5 +1,4 @@
-#include "tokenize.h"
-#include "util.h"
+#include "9cv.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>

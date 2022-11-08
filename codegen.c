@@ -1,7 +1,4 @@
-#include "codegen.h"
 #include "9cv.h"
-#include "parse.h"
-#include "util.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
