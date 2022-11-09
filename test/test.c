@@ -35,6 +35,7 @@ int main() {
   test_var();
   test_struct();
   test_enum();
+  test_typedef();
 
   printf("1..%d\n", test_count);
 
@@ -306,9 +307,6 @@ int test_struct() {
   struct Struct1 s1;
   struct Struct1 *sp = &s1;
   struct Struct2 s2;
-  s2.c = 123;
-
-  is(0, s1.a, "struct Struct1 s1; s1.a");
   s1.a = 100;
   is(100, s1.a, "s1.a = 100; s1.a");
   s1.s = "foobar";
@@ -326,4 +324,12 @@ int test_enum() {
   is(1, A2, "enum A { A1, A2, A3 }; A2");
 
   enum A a;
+}
+
+typedef struct Struct2 S2;
+typedef enum A A;
+int test_typedef() {
+  S2 s;
+  s.c = 123;
+  is(123, s.c, "typedef struct Struct2 S2; S2 s; s.c = 123; s.c");
 }

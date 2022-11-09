@@ -100,6 +100,10 @@ static Node *new_node_num(int val) {
 //    type        = ("int" | "char") "*"*
 //                | ident
 //                | "struct" ident ("{" (type ident ";")* "}")?
+//                | "enum" ident ("{" ident ("," ident)* "}")?
+//                | "typedef" type
+//                  // これだけセマンティクスが違うのにちゅうい。 typedef type A
+//                  // は変数 A の宣言ではない
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
@@ -245,6 +249,7 @@ static Type *new_type_array_of(Type *base, int size) {
   return type;
 }
 
+// TODO: TY_TYPEDEF が来た場合は base にする処理をすべてのパスに
 Type *typeof_node(Node *node) {
   switch (node->kind) {
   case ND_NUM:
@@ -283,8 +288,13 @@ Type *typeof_node(Node *node) {
     // TODO: 関数の戻り値の型を返す
     return &int_type;
 
-  case ND_LVAR:
-    return node->lvar->type;
+  case ND_LVAR: {
+    Type *type = node->lvar->type;
+    if (type->ty == TY_TYPEDEF) {
+      return type->base;
+    }
+    return type;
+  }
 
   case ND_DEREF: {
     Type *type = typeof_node(node->lhs);
@@ -298,17 +308,26 @@ Type *typeof_node(Node *node) {
   case ND_ADDR:
     return new_type_ptr_to(typeof_node(node->lhs));
 
-  case ND_GVAR:
-    return node->gvar->type;
+  case ND_GVAR: {
+    Type *type = node->gvar->type;
+    if (type->ty == TY_TYPEDEF) {
+      return type->base;
+    }
+    return type;
+  }
 
   case ND_MEMBER: {
-    Type *type = typeof_node(node->lhs);
-    if (type->ty != TY_STRUCT) {
+    Type *stype = typeof_node(node->lhs);
+    if (stype->ty != TY_STRUCT) {
       error_at(node->source_pos, "not a struct");
     }
 
-    Var *member = find_var(type->members, node->ident->str, node->ident->len);
-    return member->type;
+    Var *member = find_var(stype->members, node->ident->str, node->ident->len);
+    Type *type = member->type;
+    if (type->ty == TY_TYPEDEF) {
+      return type->base;
+    }
+    return type;
   }
 
   default:
@@ -337,6 +356,8 @@ int sizeof_type(Type *type) {
       m = m->next;
     return m ? m->offset + sizeof_type(m->type) : 0;
   }
+  case TY_TYPEDEF:
+    return sizeof_type(type->base);
   }
 }
 
@@ -570,6 +591,7 @@ Type *parse_type() {
     if (name != NULL) {
       type->name = name->str;
       type->name_len = name->len;
+      type = add_or_find_defined_type(type);
     }
 
     if (token_consume_punct("{")) {
@@ -593,8 +615,21 @@ Type *parse_type() {
         token_expect_punct(",");
       }
     }
+  } else if (token_consume(TK_TYPEDEF)) {
+    type->ty = TY_TYPEDEF;
+    type->base = parse_type();
+    // typedef の場合は空の宣言がないので add_defined_type がよいのではないか
+    return type;
   } else {
-    return NULL;
+    if (curr_token->kind != TK_IDENT) {
+      return NULL;
+    }
+    type = find_defined_type(curr_token->str, curr_token->len);
+    if (type == NULL) {
+      return NULL;
+    }
+    Token *advanced = token_consume(TK_IDENT);
+    assert(advanced);
   }
 
   while (token_consume_punct("*")) {
@@ -767,7 +802,7 @@ Node *parse_stmt() {
 static Node *parse_decl() {
   Type *type = parse_type();
   if (!type) {
-    error("expected type");
+    error("decl: expected type");
   }
 
   Token *ident = token_consume(TK_IDENT);
@@ -787,8 +822,20 @@ static Node *parse_decl() {
     }
   }
 
+  if (type->ty == TY_TYPEDEF) {
+    token_expect_punct(";");
+
+    // この場合だけ変数の宣言ではなく型をつくる
+    // FIXME: add_defined_type のほうがいい
+    type->name = ident->str;
+    type->name_len = ident->len;
+    add_or_find_defined_type(type);
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_NOP;
+    return node;
+  }
+
   Node *node = calloc(1, sizeof(Node));
-  node->kind = ND_FUNCDECL;
   node->ident = ident;
   node->source_pos = ident->str;
   node->source_len = ident->len;
@@ -797,6 +844,8 @@ static Node *parse_decl() {
   scope_create(node);
 
   if (token_consume_punct("(")) {
+    node->kind = ND_FUNCDECL;
+
     if (token_consume_punct(")")) {
       // 引数ナシ
     } else {

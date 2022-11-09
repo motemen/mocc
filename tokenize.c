@@ -184,6 +184,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("typedef", p, 7) == 0 && !isident(p[7])) {
+      cur = new_token(TK_TYPEDEF, cur, p, 7);
+      p += 7;
+      continue;
+    }
+
     if (strncmp("int", p, 3) == 0 && !isident(p[3])) {
       cur = new_token(TK_TYPE, cur, p, 3);
       p += 3;

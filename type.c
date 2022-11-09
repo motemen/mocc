@@ -22,6 +22,16 @@ char *type_to_string(Type *type) {
     snprintf(buf, 80, "array[%ld] of %s", type->array_size,
              type_to_string(type->base));
     return buf;
+  } else if (type->ty == TY_STRUCT) {
+    snprintf(buf, 80, "struct %.*s", type->name_len, type->name);
+    return buf;
+  } else if (type->ty == TY_ENUM) {
+    snprintf(buf, 80, "enum %.*s", type->name_len, type->name);
+    return buf;
+  } else if (type->ty == TY_TYPEDEF) {
+    snprintf(buf, 80, "typedef %.*s for %s", type->name_len, type->name,
+             type_to_string(type->base));
+    return buf;
   }
 
   return "(unknown)";
@@ -89,16 +99,30 @@ String *add_string(char *str, int len) {
   return last->next = lit;
 }
 
+Type *find_defined_type(char *name, int len) {
+  Type *last = &defined_types;
+  for (Type *type = last->next; type; type = type->next) {
+    if (type->name_len == len && !strncmp(type->name, name, len)) {
+      return type;
+    }
+  }
+
+  return NULL;
+}
+
 // 既存の型で、空のものがあったらその中身を埋めて返す
 Type *add_or_find_defined_type(Type *type) {
-  assert(type->ty == TY_STRUCT); // TODO: TYPEDEF とかもくる予定
-  assert(type->name != NULL);
+  assert(type->ty == TY_STRUCT || type->ty == TY_ENUM ||
+         type->ty == TY_TYPEDEF); // TODO: TYPEDEF とかもくる予定
+  if (type->name == NULL) {
+    error("unnamed type: (%s)", type_to_string(type));
+  }
 
   Type *last = &defined_types;
   for (Type *it = last->next; it; last = it, it = it->next) {
     if (it->name_len == type->name_len &&
         strncmp(it->name, type->name, type->name_len) == 0) {
-      if (type->members != NULL) {
+      if (type->ty == TY_STRUCT && type->members != NULL) {
         if (it->members != NULL) {
           error("type already defined: '%.*s'", type->name_len, type->name);
         }

@@ -124,6 +124,7 @@ typedef enum {
   TK_CONTINUE,
   TK_STRUCT,
   TK_ENUM,
+  TK_TYPEDEF,
 } TokenKind;
 
 struct Token {
@@ -155,7 +156,8 @@ typedef enum TypeKind {
   TY_PTR,
   TY_ARRAY,
   TY_STRUCT,
-  TY_ENUM
+  TY_ENUM,
+  TY_TYPEDEF,
 } TypeKind;
 
 struct Type {
@@ -208,6 +210,7 @@ Var *find_var_in_curr_scope(char *name, int len);
 String *add_string(char *str, int len);
 
 Type *add_or_find_defined_type(Type *type);
+Type *find_defined_type(char *name, int len);
 
 _Noreturn void error(char *fmt, ...) __attribute__((format(printf, 1, 2)));
 _Noreturn void error_at(char *loc, char *fmt, ...)
