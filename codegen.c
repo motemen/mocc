@@ -36,44 +36,37 @@ static void codegen_push_t0() {
   printf("  # }}}\n");
 }
 
-static int max_lvar_offset(Node *scope) {
-  int max = 0;
-
-  Var *last_lvar = NULL;
-  for (Var *lvar = scope->locals->next; lvar; lvar = lvar->next) {
+static int scope_offset(Scope *scope) {
+  int max = scope->node->locals->offset;
+  for (Var *var = scope->node->locals->next; var; var = var->next) {
     // 常にあとのほうが offset でかいはずなのでこれでよい
-    last_lvar = lvar;
+    max = var->offset;
   }
-
-  if (!last_lvar) {
-    return 0;
-  }
-
-  return last_lvar->offset;
+  return max;
 }
 
-static void codegen_prologue(Node *scope) {
+static void codegen_prologue(Scope *scope) {
   printf("  # Prologue\n");
-  printf("  sd ra, 0(sp)\n");  // ra を保存
-  printf("  sd fp, -8(sp)\n"); // fp を保存
-  printf("  addi fp, sp, -8\n");
-  // スタックポインタを移動。関数を抜けるまで動かない
-  // max_lvar_offset は Node にもたせても良さそうな
-  printf("  addi sp, sp, -%d\n", max_lvar_offset(scope) + 8 /* for saved fp */);
+  printf("  sd ra, -8(sp)\n");  // ra を保存
+  printf("  sd fp, -16(sp)\n"); // fp を保存
+  printf("  addi fp, sp, -16\n");
+  // スタックポインタを移動。codegen_epilogue で戻す関数を抜けるまで動かない
+  printf("  addi sp, sp, -%d\n",
+         scope_offset(scope) + 16 /* for saved ra, fp */);
   printf("\n");
 }
 
 // a0 に返り値を設定してから呼ぶこと
-static void codegen_epilogue(Node *scope) {
+static void codegen_epilogue(Scope *scope) {
   printf("\n");
   printf("  # Epilogue\n");
   // sp を戻す
-  printf("  addi sp, sp, %d\n", max_lvar_offset(scope) + 8);
+  printf("  addi sp, sp, %d\n", scope_offset(scope) + 16);
   // fp も戻す
   // ここ lw にしたらおかしくなった
-  printf("  ld fp, -8(sp)\n");
+  printf("  ld fp, -16(sp)\n");
   // ra も戻す
-  printf("  ld ra, 0(sp)\n");
+  printf("  ld ra, -8(sp)\n");
 
   printf("  ret\n");
 }
@@ -88,12 +81,16 @@ void scope_create(Node *node) {
 
 void scope_push(Node *node) {
   assert(curr_scope != NULL);
-  assert(node->locals != NULL); // TODO: locals
-                                // はここで作られるということにしたほうがいいきもする。むしろ
-                                // assert(node->locals == NULL)
+  // TODO: locals
+  // はここで作られるということにしたほうがいいきもする。むしろ
+  // assert(node->locals == NULL)
+  assert(node->locals != NULL);
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
-  scope->node->locals->offset = max_lvar_offset(curr_scope->node);
+  if (scope->node->locals->offset == 0) {
+    // push 後に上のスコープで変数が宣言された場合に変になりそう
+    scope->node->locals->offset = scope_offset(curr_scope) + 8;
+  }
   scope->parent = curr_scope;
   curr_scope = scope;
 }
@@ -113,6 +110,18 @@ static Scope *scope_find(NodeKind kind) {
   }
 
   return NULL;
+}
+
+static void codegen_scope_push(Node *node) {
+  printf("  addi sp, sp, %d\n", scope_offset(curr_scope));
+  scope_push(node);
+  printf("  addi sp, sp, -%d\n", scope_offset(curr_scope));
+}
+
+static void codegen_scope_pop() {
+  printf("  addi sp, sp, %d\n", scope_offset(curr_scope));
+  scope_pop();
+  printf("  addi sp, sp, -%d\n", scope_offset(curr_scope));
 }
 
 static void codegen_expr(Node *node);
@@ -591,7 +600,7 @@ static bool codegen_node(Node *node) {
     codegen_pop_t0();
 
     printf("  mv a0, t0\n");
-    codegen_epilogue(scope_find(ND_FUNCDECL)->node);
+    codegen_epilogue(scope_find(ND_FUNCDECL));
 
     return false;
 
@@ -626,7 +635,7 @@ static bool codegen_node(Node *node) {
   }
 
   case ND_WHILE: {
-    scope_push(node);
+    codegen_scope_push(node);
 
     printf(".Lbegin%03d:\n", node->label_index);
     printf(".Lcontinue%03d:\n", node->label_index);
@@ -644,13 +653,19 @@ static bool codegen_node(Node *node) {
     printf(".Lbreak%03d:\n", node->label_index);
     printf(".Lend%03d:\n", node->label_index);
 
-    scope_pop();
+    codegen_scope_pop();
 
     return false;
   }
 
   case ND_FOR: {
-    scope_push(node);
+    codegen_scope_push(node);
+
+    for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+      for (Var *var = node->locals->next; var; var = var->next) {
+        printf("  # var %.*s offset=%d\n", var->len, var->name, var->offset);
+      }
+    }
 
     if (node->lhs) {
       if (codegen_node(node->lhs))
@@ -683,14 +698,13 @@ static bool codegen_node(Node *node) {
     printf(".Lbreak%03d:\n", node->label_index);
     printf(".Lend%03d:\n", node->label_index);
 
-    scope_pop();
+    codegen_scope_pop();
 
     return false;
   }
 
   case ND_BLOCK:
     // scope の対応がいるかもね
-
     for (NodeList *n = node->nodes; n; n = n->next) {
       if (codegen_node(n->node))
         codegen_pop_discard();
@@ -704,7 +718,7 @@ static bool codegen_node(Node *node) {
     printf("%.*s:\n", node->ident->len, node->ident->str);
 
     scope_create(node);
-    codegen_prologue(node);
+    codegen_prologue(curr_scope);
 
     int arg_count = 0;
     for (NodeList *a = node->args; a; a = a->next) {
@@ -722,7 +736,7 @@ static bool codegen_node(Node *node) {
     }
 
     printf("  mv a0, zero\n");
-    codegen_epilogue(node);
+    codegen_epilogue(curr_scope);
     curr_scope = NULL;
 
     return false;

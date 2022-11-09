@@ -5,10 +5,10 @@ OBJS=$(SRCS:.c=.o)
 mocc: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 
-$(OBJS): mocc.h
-
 test: mocc
-	LLVM_PROFILE_FILE=mocc.profraw ./mocc test/test.c > tmp.s && riscv64-$(RISCV_HOST)-gcc -static tmp.s -o test.out && prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./test.out
+	LLVM_PROFILE_FILE=mocc.profraw ./mocc test/test.c > tmp.s && \
+	riscv64-$(RISCV_HOST)-gcc -static tmp.s -o test.out && \
+	prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./test.out
 	prove -v ./test.sh
 
 clean:

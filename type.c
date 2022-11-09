@@ -88,6 +88,7 @@ String *add_string(char *str, int len) {
   return last->next = lit;
 }
 
+// 既存の型で、空のものがあったらその中身を埋めて返す
 Type *add_or_find_defined_type(Type *type) {
   assert(type->ty == TY_STRUCT); // TODO: TYPEDEF とかもくる予定
   assert(type->name != NULL);
