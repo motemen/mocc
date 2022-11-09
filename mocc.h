@@ -123,6 +123,7 @@ typedef enum {
   TK_BREAK,
   TK_CONTINUE,
   TK_STRUCT,
+  TK_ENUM,
 } TokenKind;
 
 struct Token {
@@ -148,7 +149,14 @@ bool token_at_eof();
 void token_expect_punct(char *op);
 int token_expect_number();
 
-typedef enum TypeKind { TY_CHAR, TY_INT, TY_PTR, TY_ARRAY, TY_STRUCT } TypeKind;
+typedef enum TypeKind {
+  TY_CHAR,
+  TY_INT,
+  TY_PTR,
+  TY_ARRAY,
+  TY_STRUCT,
+  TY_ENUM
+} TypeKind;
 
 struct Type {
   TypeKind ty;
@@ -165,12 +173,15 @@ struct Type {
 
 extern Type defined_types;
 
+// ローカル変数、構造体メンバ、グローバル変数
 struct Var {
   Var *next;
   char *name;
   int len; // name の長さ
   Type *type;
-  int offset; // メモリ上のオフセット。fp からの位置
+  int offset; // メモリ上のオフセット。ローカル変数の場合
+              // fp からの位置、構造体のメンバの場合は先頭からの位置
+  Node *const_val; // 定数のときのみ。 なんなら enum のみ。
 };
 
 // 文字列リテラル!!!
@@ -182,6 +193,7 @@ struct String {
 };
 
 extern Var globals;
+extern Var constants;
 extern String strings;
 
 int sizeof_type(Type *type);

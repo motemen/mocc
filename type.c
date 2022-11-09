@@ -7,6 +7,7 @@
 #include <string.h>
 
 Var globals;
+Var constants;
 String strings;
 Type defined_types;
 

@@ -34,6 +34,7 @@ int main() {
   test_global_var();
   test_var();
   test_struct();
+  test_enum();
 
   printf("1..%d\n", test_count);
 
@@ -308,4 +309,13 @@ int test_struct() {
 
   char *p = s1.s;
   is(111, p[1], "p = s1.s; p[1]");
+}
+
+enum A { A1, A2, A3 };
+
+int test_enum() {
+  is(0, A1, "enum A { A1, A2, A3 }; A1");
+  is(1, A2, "enum A { A1, A2, A3 }; A2");
+
+  enum A a;
 }

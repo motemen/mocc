@@ -178,6 +178,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("enum", p, 4) == 0 && !isident(p[4])) {
+      cur = new_token(TK_ENUM, cur, p, 4);
+      p += 4;
+      continue;
+    }
+
     if (strncmp("int", p, 3) == 0 && !isident(p[3])) {
       cur = new_token(TK_TYPE, cur, p, 3);
       p += 3;

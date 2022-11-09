@@ -200,6 +200,11 @@ static Node *parse_primary() {
       return node;
     }
 
+    Var *cvar = find_var(&constants, tok->str, tok->len);
+    if (cvar) {
+      return cvar->const_val;
+    }
+
     error("variable not found: '%.*s'", tok->len, tok->str);
   }
 
@@ -317,6 +322,7 @@ int sizeof_type(Type *type) {
   case TY_CHAR:
     return 1;
   case TY_INT:
+  case TY_ENUM:
     return 4;
   case TY_PTR:
     return 8;
@@ -557,6 +563,36 @@ Type *parse_type() {
       // type = "struct" という感じでおかしい
       error("either struct name nor members not given");
     }
+  } else if (token_consume(TK_ENUM)) {
+    type->ty = TY_ENUM;
+
+    Token *name = token_consume(TK_IDENT);
+    if (name != NULL) {
+      type->name = name->str;
+      type->name_len = name->len;
+    }
+
+    if (token_consume_punct("{")) {
+      if (token_consume_punct("}")) {
+        error("empty enum");
+      }
+
+      for (int i = 0;; i++) {
+        Token *enum_item = token_consume(TK_IDENT);
+        if (!enum_item) {
+          error("expected name");
+        }
+
+        Var *var = add_var(&constants, enum_item->str, enum_item->len, type);
+        var->const_val = new_node_num(i);
+
+        if (token_consume_punct("}")) {
+          break;
+        }
+
+        token_expect_punct(",");
+      }
+    }
   } else {
     return NULL;
   }
@@ -738,7 +774,7 @@ static Node *parse_decl() {
   if (!ident) {
     // struct S { int i; }; など識別子が登場しない場合、たぶん型の宣言
     //
-    if (type->ty == TY_STRUCT) {
+    if (type->ty == TY_STRUCT || type->ty == TY_ENUM) {
       token_expect_punct(";");
 
       // じつはここでもう処理は済んでしまっている
