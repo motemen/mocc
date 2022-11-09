@@ -242,6 +242,14 @@ int test_for_while() {
     sum = sum + n;
   }
   is(42, sum, "for 1+..+9, skip 3");
+
+  int i = 0;
+  for (;;) {
+    i = i + 1;
+    if (i == 5)
+      break;
+  }
+  is(5, i, "for(;;) break at 5");
 }
 
 int test_pointer() {
