@@ -5,6 +5,8 @@
 int test_count = 0;
 int fail_count = 0;
 
+int ok(int ok, char *message);
+
 int is(int expected, int actual, char *message) {
   if (ok(actual == expected, message) == 0) {
     printf("# expected %d but got %d\n", expected, actual);

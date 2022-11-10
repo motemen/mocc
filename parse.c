@@ -905,7 +905,12 @@ static Node *parse_decl() {
 
     Node *block = parse_block();
     if (!block) {
-      error("expected block");
+      // 関数の宣言のみ。
+      // XXX: 現状は何もしない
+      token_expect_punct(";");
+      Node *node = calloc(1, sizeof(Node));
+      node->kind = ND_NOP;
+      return node;
     }
 
     node->nodes = block->nodes;
