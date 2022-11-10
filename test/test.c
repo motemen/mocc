@@ -276,6 +276,9 @@ int test_pointer() {
   is(7777, **pp, "x = 7777; **pp");
 
   ok(&x > 0, "&x > 0");
+
+  void *vp;
+  is(8, sizeof(vp), "void *vp; sizeof(vp)");
 }
 
 int gvar_1 = 42;

@@ -237,6 +237,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("void", p, 4) == 0 && !isident(p[4])) {
+      cur = new_token(TK_TYPE, cur, p, 4);
+      p += 4;
+      continue;
+    }
+
     if (strncmp("extern", p, 6) == 0 && !isident(p[6])) {
       cur = new_token(TK_EXTERN, cur, p, 6);
       p += 6;

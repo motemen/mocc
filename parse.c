@@ -351,6 +351,9 @@ int sizeof_type(Type *type) {
   }
   case TY_TYPEDEF:
     return sizeof_type(type->base);
+  case TY_VOID:
+    // なんでここ1なんだろうなー
+    return 1;
   }
 }
 
@@ -534,6 +537,8 @@ Type *parse_type() {
     type->ty = TY_INT;
   } else if (token_consume_type("char")) {
     type->ty = TY_CHAR;
+  } else if (token_consume_type("void")) {
+    type->ty = TY_VOID;
   } else if (token_consume(TK_STRUCT)) {
     type->ty = TY_STRUCT;
 

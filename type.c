@@ -57,6 +57,10 @@ Var *find_var(Var *head, char *name, int len) {
 // locals を共有するために scope を置いてたけど、head を切り替える（そもそも
 // scope ごとに locals を持つ） ことで不要になる予感
 Var *add_var(Var *head, char *name, int len, Type *type) {
+  if (type->ty == TY_VOID) {
+    error("void is not a valid type");
+  }
+
   int offset = head->offset;
   Var *last = head;
   for (Var *var = last->next; var; last = var, var = var->next) {

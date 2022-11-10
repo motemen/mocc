@@ -168,6 +168,7 @@ typedef enum TypeKind {
   TY_CHAR,
   TY_INT,
   TY_PTR,
+  TY_VOID,
   TY_ARRAY,
   TY_STRUCT,
   TY_ENUM,
