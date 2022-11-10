@@ -114,7 +114,7 @@ String *add_string(char *str, int len) {
 Type *find_defined_type(char *name, int len) {
   Type *last = &defined_types;
   for (Type *type = last->next; type; type = type->next) {
-    if (type->name_len == len && !strncmp(type->name, name, len) &&
+    if (type->name_len == len && strncmp(type->name, name, len) == 0 &&
         type->ty == TY_TYPEDEF) {
       return type;
     }
@@ -134,7 +134,8 @@ Type *add_or_find_defined_type(Type *type) {
   Type *last = &defined_types;
   for (Type *it = last->next; it; last = it, it = it->next) {
     if (it->name_len == type->name_len &&
-        strncmp(it->name, type->name, type->name_len) == 0) {
+        strncmp(it->name, type->name, type->name_len) == 0 &&
+        it->ty == type->ty) {
       if (type->ty == TY_STRUCT && type->members != NULL) {
         if (it->members != NULL) {
           error("type already defined: '%.*s'", type->name_len, type->name);

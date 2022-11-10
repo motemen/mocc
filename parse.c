@@ -566,6 +566,7 @@ Type *parse_type() {
       // ND_FUNCDECL の場合と似てるかも
       type->members = calloc(1, sizeof(Var));
       type->members->is_struct_member = true;
+
       while (true) {
         Type *member_type = parse_type();
         if (!member_type) {
