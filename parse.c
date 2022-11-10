@@ -395,6 +395,8 @@ static Node *parse_postfix() {
   return node;
 }
 
+static Type *parse_type();
+
 static Node *parse_unary() {
   if (token_consume_punct("+")) {
     return parse_postfix();
@@ -419,8 +421,20 @@ static Node *parse_unary() {
   }
 
   if (token_consume(TK_SIZEOF) != NULL) {
-    Node *node = parse_unary();
-    Type *type = typeof_node(node);
+    Type *type;
+    if (token_consume_punct("(")) {
+      // sizeof に型が与えられるときは (,) で囲まれてるっぽい
+      type = parse_type();
+      if (type == NULL) {
+        Node *node = parse_unary();
+        type = typeof_node(node);
+      }
+      token_expect_punct(")");
+    } else {
+      Node *node = parse_unary();
+      type = typeof_node(node);
+    }
+
     int size = sizeof_type(type);
     return new_node_num(size);
   }
@@ -551,6 +565,7 @@ Type *parse_type() {
     if (token_consume_punct("{")) {
       // ND_FUNCDECL の場合と似てるかも
       type->members = calloc(1, sizeof(Var));
+      type->members->is_struct_member = true;
       while (true) {
         Type *member_type = parse_type();
         if (!member_type) {

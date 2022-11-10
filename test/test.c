@@ -28,12 +28,12 @@ int main() {
   test_func();
   test_array();
   test_string_literal();
-  test_sizeof();
   test_for_while();
   test_pointer();
   test_global_var();
   test_var();
   test_struct();
+  test_sizeof();
   test_enum();
   test_typedef();
 
@@ -185,24 +185,6 @@ int test_string_literal() {
   is(39, c2, "'\\'' == 39");
 }
 
-int test_sizeof() {
-  printf("# sizeof\n");
-
-  int x;
-  char c;
-  int a[10];
-  int *p;
-  int mat[10][10];
-
-  is(4, sizeof(x), "sizeof(x)");
-  is(1, sizeof(c), "sizeof(c)");
-  is(40, sizeof(a), "sizeof(a)");
-  is(8, sizeof(p), "sizeof(p)");
-  is(400, sizeof(mat), "sizeof(mat)");
-  is(40, sizeof(mat[0]), "sizeof(mat[0])");
-  is(8, sizeof(&mat), "sizeof(mat&)");
-}
-
 int test_for_while() {
   printf("# for while\n");
 
@@ -341,8 +323,38 @@ int test_enum() {
 
 typedef struct Struct2 S2;
 typedef enum A A;
+
 int test_typedef() {
   S2 s;
   s.c = 123;
   is(123, s.c, "typedef struct Struct2 S2; S2 s; s.c = 123; s.c");
+}
+
+int test_sizeof() {
+  printf("# sizeof\n");
+
+  int x;
+  char c;
+  int a[10];
+  int *p;
+  int mat[10][10];
+
+  is(4, sizeof x, "sizeof x");
+  is(1, sizeof(c), "sizeof(c)");
+  is(40, sizeof((a)), "sizeof((a))");
+  is(8, sizeof(p), "sizeof(p)");
+  is(400, sizeof(mat), "sizeof(mat)");
+  is(40, sizeof(mat[0]), "sizeof(mat[0])");
+  is(8, sizeof(&mat), "sizeof(mat&)");
+
+  is(4, sizeof(int), "sizeof(int)");
+  is(8, sizeof(void *), "sizeof(void *)");
+  is(16, sizeof(struct Struct1), "sizeof(struct Struct1)");
+  is(1, sizeof(struct Struct2), "sizeof(struct Struct2)");
+  is(1, sizeof(S2), "sizeof(S2)");
+  is(16, sizeof(struct {
+       char c;
+       void *p;
+     }),
+     "sizeof(struct { char c; void *p; })");
 }

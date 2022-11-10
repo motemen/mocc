@@ -54,12 +54,15 @@ Var *find_var(Var *head, char *name, int len) {
   return NULL;
 }
 
-// locals を共有するために scope を置いてたけど、head を切り替える（そもそも
-// scope ごとに locals を持つ） ことで不要になる予感
+static int roundup_to_word(int size) { return (size + 3) / 4 * 4; }
+static int roundup_to_dword(int size) { return (size + 7) / 8 * 8; }
+
 Var *add_var(Var *head, char *name, int len, Type *type) {
   if (type->ty == TY_VOID) {
     error("void is not a valid type");
   }
+
+  bool is_struct_member = head->is_struct_member;
 
   int offset = head->offset;
   Var *last = head;
@@ -67,13 +70,22 @@ Var *add_var(Var *head, char *name, int len, Type *type) {
     if (var->len == len && !strncmp(var->name, name, len))
       error("variable already defined: '%.*s'", len, name);
 
-    offset = var->offset;
+    offset = var->offset; //+ sizeof_type(var->type);
   }
 
   Var *var = calloc(1, sizeof(Var));
   var->name = name;
   var->len = len;
-  var->offset = offset + (sizeof_type(type) + 7) / 8 * 8;
+  if (is_struct_member) {
+    // ここあまり自信がない
+    if (last->type != NULL) {
+      offset += sizeof_type(last->type);
+    }
+    var->offset = sizeof_type(type) == 8 ? roundup_to_dword(offset)
+                                         : roundup_to_word(offset);
+  } else {
+    var->offset = offset + roundup_to_dword(sizeof_type(type));
+  }
   var->type = type;
 
   last->next = var;
@@ -102,7 +114,8 @@ String *add_string(char *str, int len) {
 Type *find_defined_type(char *name, int len) {
   Type *last = &defined_types;
   for (Type *type = last->next; type; type = type->next) {
-    if (type->name_len == len && !strncmp(type->name, name, len)) {
+    if (type->name_len == len && !strncmp(type->name, name, len) &&
+        type->ty == TY_TYPEDEF) {
       return type;
     }
   }
@@ -113,7 +126,7 @@ Type *find_defined_type(char *name, int len) {
 // 既存の型で、空のものがあったらその中身を埋めて返す
 Type *add_or_find_defined_type(Type *type) {
   assert(type->ty == TY_STRUCT || type->ty == TY_ENUM ||
-         type->ty == TY_TYPEDEF); // TODO: TYPEDEF とかもくる予定
+         type->ty == TY_TYPEDEF);
   if (type->name == NULL) {
     error("unnamed type: (%s)", type_to_string(type));
   }

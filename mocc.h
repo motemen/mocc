@@ -201,6 +201,7 @@ struct Var {
   int offset; // メモリ上のオフセット。ローカル変数の場合
               // fp からの位置、構造体のメンバの場合は先頭からの位置
   Node *const_val; // 定数のときのみ。 なんなら enum のみ。
+  bool is_struct_member;
 };
 
 // 文字列リテラル!!!
