@@ -608,11 +608,15 @@ Type *parse_type() {
     }
 
     if (token_consume_punct("{")) {
-      if (token_consume_punct("}")) {
-        error("empty enum");
-      }
-
       for (int i = 0;; i++) {
+        if (token_consume_punct("}")) {
+          // ケツカンマ用
+          if (i == 0) {
+            error("empty enum");
+          }
+          break;
+        }
+
         Token *enum_item = token_consume(TK_IDENT);
         if (!enum_item) {
           error("expected name");

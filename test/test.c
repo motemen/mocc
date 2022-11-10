@@ -288,6 +288,13 @@ int test_var() {
   is(6, b, "int b = a * 3");
 }
 
+enum A { A1, A2, A3 };
+typedef enum {
+  B1,
+  B2,
+  B3,
+} B;
+
 struct Struct1 {
   int a;
   int b;
@@ -298,6 +305,11 @@ struct Struct2;
 
 struct Struct2 {
   char c;
+};
+
+struct Struct3 {
+  enum A a;
+  B b;
 };
 
 int test_struct() {
@@ -314,13 +326,13 @@ int test_struct() {
   is(111, p[1], "p = s1.s; p[1]");
 }
 
-enum A { A1, A2, A3 };
-
 int test_enum() {
   is(0, A1, "enum A { A1, A2, A3 }; A1");
   is(1, A2, "enum A { A1, A2, A3 }; A2");
+  is(2, B3, "B2");
 
   enum A a;
+  B b;
 }
 
 typedef struct Struct2 S2;
