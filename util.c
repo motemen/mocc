@@ -40,7 +40,7 @@ noreturn void error_at(char *loc, char *fmt, ...) {
   verror_at(loc, fmt, ap);
 }
 
-_Noreturn void error(char *fmt, ...) {
+noreturn void error(char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   if (!curr_token) {

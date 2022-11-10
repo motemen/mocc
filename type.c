@@ -67,8 +67,14 @@ Var *add_var(Var *head, char *name, int len, Type *type) {
   int offset = head->offset;
   Var *last = head;
   for (Var *var = last->next; var; last = var, var = var->next) {
-    if (var->len == len && !strncmp(var->name, name, len))
+    if (var->len == len && !strncmp(var->name, name, len)) {
+      if (var->type->is_extern) {
+        var->type->is_extern = false;
+        return var;
+      }
+
       error("variable already defined: '%.*s'", len, name);
+    }
 
     offset = var->offset; //+ sizeof_type(var->type);
   }

@@ -199,6 +199,7 @@ struct Type {
   char *name;
   int name_len; // name の長さ
 
+  // これは宣言にまつわるものだから Type に置かないほうがいいかもなあ
   bool is_extern;
 };
 
