@@ -89,6 +89,13 @@ void tokenize(char *p) {
       char *end = p + 1;
       while (*end != '"') {
         end++;
+        // かなり適当。\000 のようなパターンは無視、かつ
+        // エスケープを解釈せずにそのまま受け取る。
+        // .s // にママで吐き出して、
+        // アセンブラがよしなに受け取ってくれることを期待している
+        if (*end == '\\') {
+          end += 2;
+        }
       }
       cur = new_token(TK_STRING, cur, p + 1, end - p - 1);
       p = end + 1;

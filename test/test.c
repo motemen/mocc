@@ -172,10 +172,11 @@ int test_array() {
 int test_string_literal() {
   printf("# string literal\n");
 
-  char *s = "Hello, world!";
+  char *s = "Hello,\nworld!";
 
-  is(s[0], 72, "s[0] == 72");
-  is(s[13], 0, "s[13] == 0");
+  is(72, s[0], "s[0] == 72");
+  is(0, s[13], "s[13] == 0");
+  is(10, s[6], "s[6] == 10");
 }
 
 int test_sizeof() {
