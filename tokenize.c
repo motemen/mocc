@@ -85,6 +85,38 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (*p == '\'') {
+      char *start = p;
+      int n;
+      p++;
+      if (*p == '\\') {
+        p++;
+        if (*p == '\\') {
+          n = '\\';
+        } else if (*p == '\'') {
+          n = '\'';
+        } else if (*p == 'n') {
+          n = '\n';
+        } else if (*p == '0') {
+          n = '\0';
+        } else {
+          error_at(p, "unknown character escape");
+        }
+      } else if (*p == '\'') {
+        error("character is empty");
+      } else {
+        n = *p;
+      }
+      cur = new_token(TK_NUM, cur, start, p - start + 1);
+      cur->val = n;
+      p++;
+      if (*p != '\'') {
+        error_at(p, "character is not closed");
+      }
+      p++;
+      continue;
+    }
+
     if (*p == '"') {
       char *end = p + 1;
       while (*end != '"') {
