@@ -646,8 +646,15 @@ Type *parse_type() {
     if (type == NULL) {
       return NULL;
     }
-    Token *advanced = token_consume(TK_IDENT);
-    assert(advanced);
+
+    if (type->ty == TY_TYPEDEF) {
+      // parse_decl で typedef かどうかを見てるので
+      // typedef 済みの型を見つけたら元の型を返す
+      type = type->base;
+    }
+
+    // 読み捨てておく
+    assert(token_consume(TK_IDENT) != NULL);
   }
 
   while (token_consume_punct("*")) {

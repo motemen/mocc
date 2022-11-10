@@ -344,6 +344,11 @@ int test_typedef() {
   is(123, s.c, "typedef struct Struct2 S2; S2 s; s.c = 123; s.c");
 }
 
+A return_typedef_type() {
+  A a;
+  return a;
+}
+
 int test_sizeof() {
   printf("# sizeof\n");
 
