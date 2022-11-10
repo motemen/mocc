@@ -1,11 +1,4 @@
 #include "mocc.h"
-#include "util.h"
-#include <assert.h>
-#include <ctype.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 int label_index = 0;
 

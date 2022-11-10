@@ -1,8 +1,4 @@
 #include "mocc.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 // ターゲットの ISA は RISCV64GC ということにする
 // https://riscv.org/wp-content/uploads/2015/01/riscv-calling.pdf

@@ -1,7 +1,4 @@
 #include "mocc.h"
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 _Noreturn void verror_at(char *loc, char *fmt, va_list ap) {
   if (loc) {

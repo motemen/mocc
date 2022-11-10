@@ -1,8 +1,4 @@
 #include "mocc.h"
-#include <ctype.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
 
 Token *curr_token;
 Token *prev_token;

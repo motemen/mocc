@@ -1,10 +1,4 @@
 #include "mocc.h"
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/errno.h>
 
 char *read_file(char *path) {
   FILE *fp = fopen(path, "r");

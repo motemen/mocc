@@ -1,5 +1,18 @@
+#ifdef __mocc_self__
+
+#else
+
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#endif
 
 extern char *user_input;
 extern char *input_filename;

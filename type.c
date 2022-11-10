@@ -1,10 +1,6 @@
 // 型と名前とスコープ
 
 #include "mocc.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 Var globals;
 Var constants;
