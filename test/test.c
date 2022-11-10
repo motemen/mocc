@@ -283,12 +283,15 @@ int gvar_2 = -1;
 int gvar_3; // 初期化子なし
 int gvar_4[5] = {1, 2, 3};
 
+extern int ext_var;
+
 int test_global_var() {
   is(42, gvar_1, "gvar_1 = 42");
   is(-1, gvar_2, "gvar_2 = -1");
   is(0, gvar_3, "gvar_3");
   is(1, gvar_4[0], "gvar_4 = {1, 2, 3}; gvar_4[0]");
   is(0, gvar_4[4], "gvar_4 = {1, 2, 3}; gvar_4[4]");
+  is(11111, ext_var, "extern int ext_var");
 }
 
 int test_var() {

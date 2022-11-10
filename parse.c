@@ -793,10 +793,14 @@ Node *parse_stmt() {
 }
 
 static Node *parse_decl() {
+  bool is_extern = token_consume(TK_EXTERN) != NULL;
+
   Type *type = parse_type();
   if (!type) {
     error("decl: expected type");
   }
+
+  type->is_extern = is_extern;
 
   Token *ident = token_consume(TK_IDENT);
   if (!ident) {

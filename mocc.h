@@ -138,6 +138,7 @@ typedef enum {
   TK_STRUCT,
   TK_ENUM,
   TK_TYPEDEF,
+  TK_EXTERN,
 } TokenKind;
 
 struct Token {
@@ -184,6 +185,8 @@ struct Type {
   // 定義されたものはこれ
   char *name;
   int name_len; // name の長さ
+
+  bool is_extern;
 };
 
 extern Type defined_types;

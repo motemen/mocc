@@ -9,7 +9,7 @@ test: mocc
 	LLVM_PROFILE_FILE=mocc.profraw ./mocc test/test.c > tmp.s && \
 	llvm-profdata merge -sparse mocc.profraw -o mocc.profdata && \
 	llvm-cov show ./mocc -instr-profile=mocc.profdata -format=html > coverage.html && \
-	riscv64-$(RISCV_HOST)-gcc -static tmp.s -o test.out && \
+	riscv64-$(RISCV_HOST)-gcc -static tmp.s test/helper.c -o test.out && \
 	prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./test.out
 	prove -v ./test.sh
 

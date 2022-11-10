@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int ext_var = 11111;
+
 void alloc4(int **p, int x1, int x2, int x3, int x4) {
   *p = (int *)malloc(4 * sizeof(int));
 

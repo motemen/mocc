@@ -237,6 +237,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp("extern", p, 6) == 0 && !isident(p[6])) {
+      cur = new_token(TK_EXTERN, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
     if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z') || *p == '_') {
       int n = 1;
       while (*(p + n) && isident(*(p + n))) {
