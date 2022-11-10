@@ -1,5 +1,11 @@
 #ifdef __mocc_self__
 
+typedef int bool;
+typedef int size_t; // ホントは違うとおもうが
+
+#define __attribute__(x)
+#define noreturn
+
 #else
 
 #include <assert.h>
@@ -10,6 +16,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdnoreturn.h>
 #include <string.h>
 
 #endif
@@ -230,6 +237,6 @@ String *add_string(char *str, int len);
 Type *add_or_find_defined_type(Type *type);
 Type *find_defined_type(char *name, int len);
 
-_Noreturn void error(char *fmt, ...) __attribute__((format(printf, 1, 2)));
-_Noreturn void error_at(char *loc, char *fmt, ...)
+noreturn void error(char *fmt, ...) __attribute__((format(printf, 1, 2)));
+noreturn void error_at(char *loc, char *fmt, ...)
     __attribute__((format(printf, 2, 3)));

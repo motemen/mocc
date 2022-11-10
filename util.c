@@ -1,6 +1,6 @@
 #include "mocc.h"
 
-_Noreturn void verror_at(char *loc, char *fmt, va_list ap) {
+noreturn void verror_at(char *loc, char *fmt, va_list ap) {
   if (loc) {
     char *line = loc;
     while (user_input < line && line[-1] != '\n') {
@@ -33,7 +33,7 @@ _Noreturn void verror_at(char *loc, char *fmt, va_list ap) {
   exit(1);
 }
 
-_Noreturn void error_at(char *loc, char *fmt, ...) {
+noreturn void error_at(char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
