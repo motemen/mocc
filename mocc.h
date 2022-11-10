@@ -2,6 +2,8 @@
 
 typedef int bool;
 typedef int size_t; // ホントは違うとおもうが
+typedef void FILE;
+extern void *stderr;
 
 #define __attribute__(x)
 #define noreturn
@@ -102,9 +104,12 @@ struct Node {
   int source_len;   // デバッグ用
 };
 
+// ND_FUNCDECL の仮引数
+// ND_CALL の実引数
+// ND_BLOCK の stmt*
 struct NodeList {
   Node *node;
-  struct NodeList *next;
+  NodeList *next;
 };
 
 typedef struct Scope Scope;

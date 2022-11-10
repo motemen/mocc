@@ -718,6 +718,8 @@ static bool codegen_node(Node *node) {
 
     int arg_count = 0;
     for (NodeList *a = node->args; a; a = a->next) {
+      // TODO: a->node == NULL のときは可変長引数 '...'
+
       // a0 を lvar xyz に代入するみたいなことをする
       printf("  # assign to argument '%.*s'\n", a->node->source_len,
              a->node->source_pos);

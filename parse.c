@@ -881,6 +881,15 @@ static Node *parse_decl() {
       NodeList head = {};
       NodeList *cur = &head;
       while (true) {
+        if (token_consume_punct("...")) {
+          // node_item->node == NULL だったら可変長引数ってことにしてしまおう
+          NodeList *node_item = calloc(1, sizeof(NodeList));
+          cur->next = node_item;
+          cur = cur->next;
+          token_expect_punct(")");
+          break;
+        }
+
         Type *type = parse_type();
         if (!type) {
           error("expected argument type");

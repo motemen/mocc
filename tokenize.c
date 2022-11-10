@@ -154,6 +154,12 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "...", 3) == 0) {
+      cur = new_token(TK_PUNCT, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
     if (strchr("+-*/()<>=;{},&[].!", *p)) {
       cur = new_token(TK_PUNCT, cur, p++, 1);
       continue;
