@@ -112,16 +112,14 @@ void scope_create(Node *node) {
 
 void scope_push(Node *node) {
   assert(curr_scope != NULL);
-  // TODO: locals
-  // はここで作られるということにしたほうがいいきもする。むしろ
-  // assert(node->locals == NULL)
-  assert(node->locals != NULL);
+
+  if (node->locals == NULL) {
+    node->locals = calloc(1, sizeof(Var));
+    node->locals->offset = scope_offset(curr_scope) + 8;
+  }
+
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
-  if (scope->node->locals->offset == 0) {
-    // push 後に上のスコープで変数が宣言された場合に変になりそう
-    scope->node->locals->offset = scope_offset(curr_scope) + 8;
-  }
   scope->parent = curr_scope;
   curr_scope = scope;
 }

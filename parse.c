@@ -824,7 +824,6 @@ Node *parse_stmt() {
 
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_SWITCH;
-    node->locals = calloc(1, sizeof(Var));
     node->label_index = ++label_index;
     node->lhs = expr;
     node->rhs = stmt;
@@ -837,7 +836,6 @@ Node *parse_stmt() {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_WHILE;
     node->label_index = ++label_index;
-    node->locals = calloc(1, sizeof(Var));
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
     token_expect_punct("(");
@@ -854,7 +852,6 @@ Node *parse_stmt() {
     node->label_index = ++label_index;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
-    node->locals = calloc(1, sizeof(Var));
 
     scope_push(node);
 
