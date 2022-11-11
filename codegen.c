@@ -2,6 +2,7 @@
 
 // ターゲットの ISA は RISCV64GC ということにする
 // https://riscv.org/wp-content/uploads/2015/01/riscv-calling.pdf
+// https://inst.eecs.berkeley.edu/~cs61c/fa17/img/riscvcard.pdf
 // int のサイズは 4 bytes
 // void * のサイズは 8 bytes
 
@@ -572,6 +573,16 @@ static void codegen_expr(Node *node) {
 
     return;
 
+  case ND_POSTINC:
+    codegen_push_lvalue(node->lhs);
+    codegen_pop_t1();
+    printf("  ld t0, 0(t1)\n");
+    printf("  addi t2, t0, %d\n", node->val);
+    printf("  sd t2, 0(t1)\n");
+    codegen_push_t0();
+
+    return;
+
   case ND_RETURN:
   case ND_IF:
   case ND_SWITCH:
@@ -644,6 +655,7 @@ static bool codegen_node(Node *node) {
   case ND_STRING:
   case ND_MEMBER:
   case ND_NOT:
+  case ND_POSTINC:
     codegen_expr(node);
     return true;
 

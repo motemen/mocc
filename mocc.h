@@ -79,6 +79,7 @@ typedef enum {
   ND_DEFAULT,
   ND_NOP,
   ND_MEMBER,
+  ND_POSTINC,
 } NodeKind;
 
 struct Node {

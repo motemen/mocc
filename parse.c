@@ -1,5 +1,7 @@
 #include "mocc.h"
 
+// https://port70.net/~nsz/c/c11/n1570.html
+
 int label_index = 0;
 
 char *node_kind_to_str(NodeKind kind) {
@@ -74,6 +76,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_CASE";
   case ND_DEFAULT:
     return "ND_DEFAULT";
+  case ND_POSTINC:
+    return "ND_POSTINC";
   }
 
   return "(unknown)";
@@ -134,6 +138,7 @@ static Node *new_node_num(int val) {
 //                | postfix
 //    postfix     = primary ("[" expr "]")*
 //                | primary ("." ident | "->" ident)*
+//                | primary ("++" | "--")
 //    primary     = num | ident ("(" (expr ("," expr)*)? ")")? | "(" expr ")"
 //                | string
 //    ident	      = /[a-z][a-z0-9]*/
@@ -401,6 +406,18 @@ static Node *parse_postfix() {
       node = new_node(ND_MEMBER, lhs, NULL);
       node->ident = ident;
       continue;
+    }
+
+    if (token_consume_punct("++")) {
+      node = new_node(ND_POSTINC, node, NULL);
+      node->val = 1;
+      return node;
+    }
+
+    if (token_consume_punct("--")) {
+      node = new_node(ND_POSTINC, node, NULL);
+      node->val = -1;
+      return node;
     }
 
     break;
