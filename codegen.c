@@ -393,6 +393,27 @@ static void codegen_expr(Node *node) {
     printf("  # }}} ND_ASSIGN\n");
     return;
 
+  case ND_COND: {
+    // -> t0
+    codegen_expr(node->lhs);
+    codegen_pop_t0();
+
+    printf("  beqz t0, .Lelse%03d\n", node->label_index);
+
+    printf("  # if {\n");
+    codegen_expr(node->rhs);
+    printf("  j .Lend%03d\n", node->label_index);
+    printf("  # if }\n");
+
+    printf("  # else {\n");
+    printf(".Lelse%03d:\n", node->label_index);
+    codegen_expr(node->node3);
+    printf("  # else }\n");
+
+    printf(".Lend%03d:\n", node->label_index);
+    return;
+  }
+
   case ND_CALL: {
     // FIXME: __builtin_va_start に #define してからよびたい
     if (node->ident->len == 8 &&
@@ -641,6 +662,7 @@ static bool codegen_node(Node *node) {
   case ND_LOGOR:
   case ND_LVAR:
   case ND_ASSIGN:
+  case ND_COND:
   case ND_CALL:
   case ND_DEREF:
   case ND_ADDR:

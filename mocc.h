@@ -55,6 +55,7 @@ typedef enum {
   ND_LOGOR, // ||
   ND_LVAR,
   ND_ASSIGN, // =
+  ND_COND,   // ?:
   ND_NUM,    // numbers
   ND_RETURN,
   ND_IF,

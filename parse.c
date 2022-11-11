@@ -64,6 +64,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_MEMBER";
   case ND_NOT:
     return "ND_NOT";
+  case ND_COND:
+    return "ND_COND";
   }
 
   return "(unknown)";
@@ -107,7 +109,9 @@ static Node *new_node_num(int val) {
 //                | vardecl ";"
 //    vardecl     = type ident ("[" num "]")? ("=" assign | initializer)?
 //    expr        = assign
-//    assign      = or ("=" assign)?
+//    assign      = cond
+//                | unary ("=" assign)?
+//    cond        = or ("?" expr ":" cond)?
 //    or          = equality ("||" equality)*
 //    equality    = relational ("==" relational | "!=" relational)*
 //    relational  = add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -509,8 +513,25 @@ static Node *parse_or() {
   }
 }
 
-static Node *parse_assign() {
+static Node *parse_cond() {
   Node *node = parse_or();
+
+  if (token_consume_punct("?")) {
+    Node *node_then = parse_expr();
+    token_expect_punct(":");
+    Node *node_else = parse_cond();
+
+    node = new_node(ND_COND, node, node_then);
+    node->node3 = node_else;
+    node->label_index = ++label_index;
+    return node;
+  }
+
+  return node;
+}
+
+static Node *parse_assign() {
+  Node *node = parse_cond(); // ほんとは cond | unary "=" assign なのだが
   if (token_consume_punct("=")) {
     node = new_node(ND_ASSIGN, node, parse_assign());
   }
