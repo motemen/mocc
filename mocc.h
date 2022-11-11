@@ -210,6 +210,7 @@ struct Type {
   int name_len; // name の長さ
 
   // これは宣言にまつわるものだから Type に置かないほうがいいかもなあ
+  // FIXME: Type は共有だから Var におかんといかんわ
   bool is_extern;
 };
 
