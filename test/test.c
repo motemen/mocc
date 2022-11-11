@@ -2,6 +2,8 @@
  * mocc でコンパイルして実行されるテスト
  */
 
+typedef char *va_list;
+
 int test_count = 0;
 int fail_count = 0;
 
@@ -23,25 +25,6 @@ int ok(int ok, char *message) {
     fail_count = fail_count + 1;
     return 0;
   }
-}
-
-int main() {
-  test_arithmetic();
-  test_func();
-  test_array();
-  test_string_literal();
-  test_for_while();
-  test_pointer();
-  test_global_var();
-  test_var();
-  test_struct();
-  test_sizeof();
-  test_enum();
-  test_typedef();
-
-  printf("1..%d\n", test_count);
-
-  return fail_count;
 }
 
 int test_arithmetic() {
@@ -376,4 +359,37 @@ int test_sizeof() {
        void *p;
      }),
      "sizeof(struct { char c; void *p; })");
+}
+
+void test_vaargs_sub(char *expect, char *fmt, ...) {
+  char string[80];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(string, 80, fmt, ap);
+  ok(strcmp(expect, string) == 0, string);
+}
+
+void test_varargs() {
+  test_vaargs_sub("hello va_list! x and 8888", "hello va_list! %c and %d", 'x',
+                  8888);
+}
+
+int main() {
+  test_arithmetic();
+  test_func();
+  test_array();
+  test_string_literal();
+  test_for_while();
+  test_pointer();
+  test_global_var();
+  test_var();
+  test_struct();
+  test_sizeof();
+  test_enum();
+  test_typedef();
+  test_varargs();
+
+  printf("1..%d\n", test_count);
+
+  return fail_count;
 }

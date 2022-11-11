@@ -41,6 +41,22 @@ static int scope_offset(Scope *scope) {
   return max;
 }
 
+static Scope *scope_find(NodeKind kind);
+
+static int curr_varargs_index() {
+  Scope *scope = scope_find(ND_FUNCDECL);
+
+  int varargs_index = 0;
+  for (NodeList *args = scope->node->args; args; args = args->next) {
+    if (args->node == NULL) {
+      return varargs_index;
+    }
+    varargs_index++;
+  }
+
+  return -1;
+}
+
 static void codegen_prologue(Scope *scope) {
   printf("  # Prologue\n");
   printf("  sd ra, -8(sp)\n");  // ra を保存
@@ -49,6 +65,21 @@ static void codegen_prologue(Scope *scope) {
   // スタックポインタを移動。codegen_epilogue で戻す関数を抜けるまで動かない
   printf("  addi sp, sp, -%d\n",
          scope_offset(scope) + 16 /* for saved ra, fp */);
+
+  // varargs_index != -1 なら fp をさらに 64 下げる
+  // そして a1-a7 を fp+8 から fp+56 にコピーする
+  // 仕様的に a0 に対応する named arg は必ず存在するので置く必要なし
+  // FIXME: fp のほうが sp より下にあるので push したら消えていきそうな……
+  int varargs_index = curr_varargs_index();
+  if (varargs_index != -1) {
+    printf("  # prepare for varargs\n");
+    printf("  addi fp, fp, -64\n");
+    for (int i = 1; i <= 7; i++) {
+      printf("  sd a%d, %d(fp)\n", i, i * 8);
+    }
+    printf("  addi sp, sp, -64\n");
+  }
+
   printf("\n");
 }
 
@@ -56,6 +87,10 @@ static void codegen_prologue(Scope *scope) {
 static void codegen_epilogue(Scope *scope) {
   printf("\n");
   printf("  # Epilogue\n");
+  int varargs_index = curr_varargs_index();
+  if (varargs_index != -1) {
+    printf("  addi sp, sp, 64\n");
+  }
   // sp を戻す
   printf("  addi sp, sp, %d\n", scope_offset(scope) + 16);
   // fp も戻す
@@ -172,6 +207,9 @@ static void codegen_push_lvalue(Node *node) {
   error_at(node->source_pos, "not an lvalue: %s", node_kind_to_str(node->kind));
 }
 
+static void codegen_builtin_va_start(Node *ap);
+
+// かならず何かしらの値をひとつだけ push した状態で返ってくること
 static void codegen_expr(Node *node) {
   switch (node->kind) {
   case ND_NUM:
@@ -356,6 +394,15 @@ static void codegen_expr(Node *node) {
     return;
 
   case ND_CALL: {
+    // FIXME: __builtin_va_start に #define してからよびたい
+    if (node->ident->len == 8 &&
+        strncmp("va_start", node->ident->str, node->ident->len) == 0) {
+      // 最初の引数 ap だけ渡す。一般化できるといいけどとりあえず。
+      codegen_builtin_va_start(node->nodes->node);
+      codegen_push_t0();
+      return;
+    }
+
     int arg_count = 0;
     for (NodeList *n = node->nodes; n; n = n->next) {
       codegen_expr(n->node);
@@ -565,6 +612,21 @@ static int precompute_number_initializer(Node *node) {
   }
 }
 
+static void codegen_builtin_va_start(Node *ap) {
+  int varargs_index = curr_varargs_index();
+  if (varargs_index == -1) {
+    error("va_start must be called in a function with varargs");
+  }
+
+  printf("  # va_start\n");
+  printf("  addi t0, fp, %d\n", varargs_index * 8);
+  codegen_push_t0();
+  codegen_push_lvalue(ap);
+  codegen_pop_t0();
+  codegen_pop_t1();
+  printf("  sd t1, 0(t0)\n");
+}
+
 static bool codegen_node(Node *node) {
   switch (node->kind) {
   case ND_NUM:
@@ -718,7 +780,11 @@ static bool codegen_node(Node *node) {
 
     int arg_count = 0;
     for (NodeList *a = node->args; a; a = a->next) {
-      // TODO: a->node == NULL のときは可変長引数 '...'
+      if (a->node == NULL) {
+        // これは vararg なのでオワリ
+        printf("  # vararg\n");
+        break;
+      }
 
       // a0 を lvar xyz に代入するみたいなことをする
       printf("  # assign to argument '%.*s'\n", a->node->source_len,

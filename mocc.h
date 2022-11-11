@@ -3,10 +3,18 @@
 typedef int bool;
 typedef int size_t; // ホントは違うとおもうが
 typedef void FILE;
+typedef void *va_list;
+
 extern void *stderr;
+extern int errno;
 
 #define __attribute__(x)
 #define noreturn
+
+#define NULL (0)
+#define true (1)
+#define false (0)
+#define static
 
 #else
 
