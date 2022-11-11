@@ -606,49 +606,6 @@ static void codegen_preamble() {
   printf("  .global main\n");
 }
 
-// TODO: parse のほうでやろ
-static int precompute_number_initializer(Node *node) {
-  switch (node->kind) {
-  case ND_NUM:
-    return node->val;
-
-  case ND_LT:
-    return precompute_number_initializer(node->lhs) <
-           precompute_number_initializer(node->rhs);
-
-  case ND_GE:
-    return precompute_number_initializer(node->lhs) >=
-           precompute_number_initializer(node->rhs);
-
-  case ND_ADD:
-    return precompute_number_initializer(node->lhs) +
-           precompute_number_initializer(node->rhs);
-
-  case ND_SUB:
-    return precompute_number_initializer(node->lhs) -
-           precompute_number_initializer(node->rhs);
-
-  case ND_MUL:
-    return precompute_number_initializer(node->lhs) *
-           precompute_number_initializer(node->rhs);
-
-  case ND_DIV:
-    return precompute_number_initializer(node->lhs) /
-           precompute_number_initializer(node->rhs);
-
-  case ND_EQ:
-    return precompute_number_initializer(node->lhs) ==
-           precompute_number_initializer(node->rhs);
-
-  case ND_NE:
-    return precompute_number_initializer(node->lhs) !=
-           precompute_number_initializer(node->rhs);
-
-  default:
-    error("not a constant number initializer");
-  }
-}
-
 static void codegen_builtin_va_start(Node *ap) {
   int varargs_index = curr_varargs_index();
   if (varargs_index == -1) {
@@ -901,17 +858,15 @@ static bool codegen_node(Node *node) {
     if (node->rhs != NULL) {
       // TODO: 構造体はまだ
       // TODO: ポインタの演算はまだ
-      int num = precompute_number_initializer(node->rhs);
       // TODO: long だったら quad とからしい。dword?
-      printf("  .word %d\n", num);
+      printf("  .word %d\n", node->rhs->val);
     } else if (node->nodes != NULL) {
       if (node->gvar->type->ty != TY_ARRAY) {
         error("array initializer specified but declared is not an array");
       }
       int len = node->gvar->type->array_size;
       for (NodeList *n = node->nodes; n; n = n->next) {
-        int num = precompute_number_initializer(n->node);
-        printf("  .word %d\n", num);
+        printf("  .word %d\n", n->node->val);
         if (--len < 0) {
           error("too many elements in array initializer");
         }

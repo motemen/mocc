@@ -905,7 +905,7 @@ Node *parse_stmt() {
   if (token_consume(TK_CASE) != NULL) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_CASE;
-    node->val = compute_const_expr(parse_mul()); // ?: はダメ
+    node->val = compute_const_expr(parse_expr());
     node->label_index = ++label_index;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
@@ -1079,7 +1079,7 @@ static Node *parse_decl() {
         NodeList *cur = &head;
         while (true) {
           NodeList *node_item = calloc(1, sizeof(NodeList));
-          node_item->node = parse_expr();
+          node_item->node = new_node_num(compute_const_expr(parse_expr()));
           cur->next = node_item;
           cur = cur->next;
 
@@ -1093,7 +1093,7 @@ static Node *parse_decl() {
         node->nodes = head.next;
       }
     } else {
-      node->rhs = parse_expr();
+      node->rhs = new_node_num(compute_const_expr(parse_expr()));
     }
   }
 
