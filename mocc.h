@@ -60,6 +60,7 @@ typedef enum {
   ND_NUM,    // numbers
   ND_RETURN,
   ND_IF,
+  ND_SWITCH,
   ND_WHILE,
   ND_FOR,
   ND_BLOCK,
@@ -74,6 +75,8 @@ typedef enum {
   ND_STRING,
   ND_BREAK,
   ND_CONTINUE,
+  ND_CASE,
+  ND_DEFAULT,
   ND_NOP,
   ND_MEMBER,
 } NodeKind;
@@ -147,6 +150,9 @@ typedef enum {
   TK_RETURN,
   TK_IF,
   TK_ELSE,
+  TK_SWITCH,
+  TK_CASE,
+  TK_DEFAULT,
   TK_WHILE,
   TK_FOR,
   TK_IDENT,

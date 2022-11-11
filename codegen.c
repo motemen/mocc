@@ -576,6 +576,7 @@ static void codegen_expr(Node *node) {
 
   case ND_RETURN:
   case ND_IF:
+  case ND_SWITCH:
   case ND_WHILE:
   case ND_FOR:
   case ND_BLOCK:
@@ -584,6 +585,8 @@ static void codegen_expr(Node *node) {
   case ND_GVARDECL:
   case ND_BREAK:
   case ND_CONTINUE:
+  case ND_CASE:
+  case ND_DEFAULT:
     break;
 
   case ND_NOP:
@@ -605,6 +608,7 @@ static void codegen_preamble() {
   printf("  .global main\n");
 }
 
+// TODO: parse のほうでやろ
 static int precompute_number_initializer(Node *node) {
   switch (node->kind) {
   case ND_NUM:
@@ -725,6 +729,35 @@ static bool codegen_node(Node *node) {
 
     printf("  # ND_IF }}}\n");
     printf("\n");
+
+    return false;
+  }
+
+  case ND_SWITCH: {
+    codegen_scope_push(node);
+
+    codegen_expr(node->lhs);
+    codegen_pop_t0();
+
+    // FIXME 直下が ND_BLOCK である前提だしネストしてたらうまくいかない
+    Node *node_default = NULL;
+    for (NodeList *n = node->rhs->nodes; n; n = n->next) {
+      if (n->node->kind == ND_CASE) {
+        printf("  li t1, %d\n", n->node->val);
+        printf("  beq t0, t1, .Lcase%03d\n", n->node->label_index);
+      } else if (n->node->kind == ND_DEFAULT) {
+        node_default = n->node;
+      }
+    }
+    if (node_default) {
+      printf("  j .Ldefault%03d\n", node_default->label_index);
+    }
+
+    printf("  j .Lbreak%03d\n", node->label_index);
+    codegen_node(node->rhs);
+    printf(".Lbreak%03d:\n", node->label_index);
+
+    codegen_scope_pop();
 
     return false;
   }
@@ -900,6 +933,9 @@ static bool codegen_node(Node *node) {
       scope = scope_find(ND_FOR);
     }
     if (!scope) {
+      scope = scope_find(ND_SWITCH);
+    }
+    if (!scope) {
       error("not in while or for loop");
     }
 
@@ -921,6 +957,16 @@ static bool codegen_node(Node *node) {
 
     return false;
   }
+
+  case ND_CASE:
+    printf("  # case %d\n", node->val);
+    printf(".Lcase%03d:\n", node->label_index);
+    return false;
+
+  case ND_DEFAULT:
+    printf("  # case default\n");
+    printf(".Ldefault%03d:\n", node->label_index);
+    return false;
 
   case ND_NOP:
     return false;

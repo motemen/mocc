@@ -68,6 +68,12 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_NOT";
   case ND_COND:
     return "ND_COND";
+  case ND_SWITCH:
+    return "ND_SWITCH";
+  case ND_CASE:
+    return "ND_CASE";
+  case ND_DEFAULT:
+    return "ND_DEFAULT";
   }
 
   return "(unknown)";
@@ -104,11 +110,13 @@ static Node *new_node_num(int val) {
 //    stmt        = expr ";"
 //                | "return" expr ";"
 //                | "if" "(" expr ")" stmt ("else" stmt)?
+//                | "switch" stmt
 //                | "while" "(" expr ")" stmt
 //                | "for" "(" (vardecl | expr)? ";" expr? ";" expr? ")" stmt
 //                | "{" stmt* "}"
 //                | "break" ";"
 //                | vardecl ";"
+//                | "case" expr ":" stmt
 //    vardecl     = type ident ("[" num "]")? ("=" assign | initializer)?
 //    expr        = assign
 //    assign      = cond
@@ -741,6 +749,40 @@ static Node *parse_vardecl() {
   return node;
 }
 
+static int compute_const_expr(Node *node) {
+  switch (node->kind) {
+  case ND_NUM:
+    return node->val;
+
+  case ND_LT:
+    return compute_const_expr(node->lhs) < compute_const_expr(node->rhs);
+
+  case ND_GE:
+    return compute_const_expr(node->lhs) >= compute_const_expr(node->rhs);
+
+  case ND_ADD:
+    return compute_const_expr(node->lhs) + compute_const_expr(node->rhs);
+
+  case ND_SUB:
+    return compute_const_expr(node->lhs) - compute_const_expr(node->rhs);
+
+  case ND_MUL:
+    return compute_const_expr(node->lhs) * compute_const_expr(node->rhs);
+
+  case ND_DIV:
+    return compute_const_expr(node->lhs) / compute_const_expr(node->rhs);
+
+  case ND_EQ:
+    return compute_const_expr(node->lhs) == compute_const_expr(node->rhs);
+
+  case ND_NE:
+    return compute_const_expr(node->lhs) != compute_const_expr(node->rhs);
+
+  default:
+    error("not a constant expression");
+  }
+}
+
 Node *parse_stmt() {
   if (token_consume(TK_RETURN) != NULL) {
     Node *node = calloc(1, sizeof(Node));
@@ -769,6 +811,23 @@ Node *parse_stmt() {
     node->lhs = expr;
     node->rhs = stmt;
     node->node3 = else_stmt;
+    node->source_pos = expr->source_pos;
+    node->source_len = expr->source_len;
+    return node;
+  }
+
+  if (token_consume(TK_SWITCH) != NULL) {
+    token_expect_punct("(");
+    Node *expr = parse_expr();
+    token_expect_punct(")");
+    Node *stmt = parse_stmt();
+
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_SWITCH;
+    node->locals = calloc(1, sizeof(Var));
+    node->label_index = ++label_index;
+    node->lhs = expr;
+    node->rhs = stmt;
     node->source_pos = expr->source_pos;
     node->source_len = expr->source_len;
     return node;
@@ -843,6 +902,27 @@ Node *parse_stmt() {
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
     token_expect_punct(";");
+    return node;
+  }
+
+  if (token_consume(TK_CASE) != NULL) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_CASE;
+    node->val = compute_const_expr(parse_mul()); // ?: はダメ
+    node->label_index = ++label_index;
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
+    token_expect_punct(":");
+    return node;
+  }
+
+  if (token_consume(TK_DEFAULT) != NULL) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_DEFAULT;
+    node->label_index = ++label_index;
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
+    token_expect_punct(":");
     return node;
   }
 

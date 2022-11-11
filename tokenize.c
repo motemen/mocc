@@ -184,6 +184,24 @@ void tokenize(char *p) {
       continue;
     }
 
+    if (strncmp(p, "switch", 6) == 0 && !isident(p[6])) {
+      cur = new_token(TK_SWITCH, cur, p, 6);
+      p += 6;
+      continue;
+    }
+
+    if (strncmp(p, "case", 4) == 0 && !isident(p[4])) {
+      cur = new_token(TK_CASE, cur, p, 4);
+      p += 4;
+      continue;
+    }
+
+    if (strncmp(p, "default", 7) == 0 && !isident(p[7])) {
+      cur = new_token(TK_DEFAULT, cur, p, 7);
+      p += 7;
+      continue;
+    }
+
     if (strncmp(p, "while", 5) == 0 && !isident(p[5])) {
       cur = new_token(TK_WHILE, cur, p, 5);
       p += 5;

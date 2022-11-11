@@ -73,6 +73,17 @@ int test_arithmetic() {
   is(0, 123 && 0, "123 && 0");
 }
 
+int test_switch() {
+  int a = 1;
+  switch (a) {
+  case 1:
+    ok(1, "switch 1");
+    break;
+  default:
+    ok(0, "switch 1");
+  }
+}
+
 int test_func() {
   printf("# func\n");
   is(1, fact(0), "fact(0)");
