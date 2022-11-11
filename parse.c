@@ -54,6 +54,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_STRING";
   case ND_LOGOR:
     return "ND_LOGOR";
+  case ND_LOGAND:
+    return "ND_LOGAND";
   case ND_BREAK:
     return "ND_BREAK";
   case ND_CONTINUE:
@@ -502,11 +504,26 @@ static Node *parse_equality() {
   }
 }
 
-static Node *parse_or() {
+// and = eq
+//     | and "&&" eq
+static Node *parse_and() {
   Node *node = parse_equality();
   for (;;) {
+    if (token_consume_punct("&&")) {
+      node = new_node(ND_LOGAND, node, parse_equality());
+    } else {
+      return node;
+    }
+  }
+}
+
+// or = and
+//    | or "||" and
+static Node *parse_or() {
+  Node *node = parse_and();
+  for (;;) {
     if (token_consume_punct("||")) {
-      node = new_node(ND_LOGOR, node, parse_equality());
+      node = new_node(ND_LOGOR, node, parse_and());
     } else {
       return node;
     }

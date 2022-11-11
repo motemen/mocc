@@ -44,15 +44,16 @@ typedef struct Var Var;
 typedef struct String String;
 
 typedef enum {
-  ND_ADD,   // +
-  ND_SUB,   // -
-  ND_MUL,   // *
-  ND_DIV,   // /
-  ND_EQ,    // ==
-  ND_NE,    // !=
-  ND_LT,    // <
-  ND_GE,    // >=
-  ND_LOGOR, // ||
+  ND_ADD,    // +
+  ND_SUB,    // -
+  ND_MUL,    // *
+  ND_DIV,    // /
+  ND_EQ,     // ==
+  ND_NE,     // !=
+  ND_LT,     // <
+  ND_GE,     // >=
+  ND_LOGOR,  // ||
+  ND_LOGAND, // &&
   ND_LVAR,
   ND_ASSIGN, // =
   ND_COND,   // ?:
