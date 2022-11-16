@@ -5,6 +5,10 @@ typedef int size_t; // ホントは違うとおもうが
 typedef void FILE;
 typedef void *va_list;
 
+#define SEEK_SET 0
+#define SEEK_END 2
+
+extern void *stdin;
 extern void *stderr;
 extern int errno;
 
