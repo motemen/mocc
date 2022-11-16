@@ -343,6 +343,9 @@ Type *typeof_node(Node *node) {
     return type;
   }
 
+  case ND_POSTINC:
+    return typeof_node(node->lhs);
+
   default:
     error_at(node->source_pos, "typeof_node: unimplemented: %s",
              node_kind_to_str(node->kind));
