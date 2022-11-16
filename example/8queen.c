@@ -8,16 +8,16 @@ int check[8][8];
 int _check_board_by(int x, int y, int mark, int inc) {
   board[y][x] = mark;
 
-  for (int _x = 0; _x < 8; _x = _x + 1) {
+  for (int _x = 0; _x < 8; _x++) {
     check[y][_x] = check[y][_x] + inc;
   }
 
-  for (int _y = 0; _y < 8; _y = _y + 1) {
+  for (int _y = 0; _y < 8; _y++) {
     check[_y][x] = check[_y][x] + inc;
   }
 
-  for (int _x = 0; _x < 8; _x = _x + 1) {
-    for (int _y = 0; _y < 8; _y = _y + 1) {
+  for (int _x = 0; _x < 8; _x++) {
+    for (int _y = 0; _y < 8; _y++) {
       if (x + y == _x + _y) {
         check[_y][_x] = check[_y][_x] + inc;
       }
@@ -32,10 +32,8 @@ int check_board(int x, int y) { _check_board_by(x, y, 1, 1); }
 int uncheck_board(int x, int y) { _check_board_by(x, y, 0, -1); }
 
 int print_board() {
-  int x;
-  int y;
-  for (y = 0; y < 8; y = y + 1) {
-    for (x = 0; x < 8; x = x + 1) {
+  for (int y = 0; y < 8; y++) {
+    for (int x = 0; x < 8; x++) {
       if (board[y][x] == 1) {
         putchar(81 /* 'Q' */);
       } else {
@@ -47,8 +45,8 @@ int print_board() {
 }
 
 int print_check() {
-  for (int y = 0; y < 8; y = y + 1) {
-    for (int x = 0; x < 8; x = x + 1) {
+  for (int y = 0; y < 8; y++) {
+    for (int x = 0; x < 8; x++) {
       putchar(48 + check[y][x]);
     }
     putchar(10);
@@ -62,7 +60,7 @@ int solve(int x) {
     return 0;
   }
 
-  for (int y = 0; y < 8; y = y + 1) {
+  for (int y = 0; y < 8; y++) {
     if (check[y][x] == 0) {
       check_board(x, y);
       solve(x + 1);
