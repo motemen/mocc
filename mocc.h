@@ -215,10 +215,6 @@ struct Type {
   // 定義されたものはこれ
   char *name;
   int name_len; // name の長さ
-
-  // これは宣言にまつわるものだから Type に置かないほうがいいかもなあ
-  // FIXME: Type は共有だから Var におかんといかんわ
-  bool is_extern;
 };
 
 extern Type defined_types;
@@ -233,6 +229,8 @@ struct Var {
               // fp からの位置、構造体のメンバの場合は先頭からの位置
   Node *const_val; // 定数のときのみ。 なんなら enum のみ。
   bool is_struct_member;
+
+  bool is_extern;
 };
 
 // 文字列リテラル!!!
@@ -252,7 +250,7 @@ Type *typeof_node(Node *node);
 
 char *type_to_string(Type *type);
 
-Var *add_var(Var *head, char *name, int len, Type *type);
+Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern);
 Var *find_var(Var *head, char *name, int len);
 Var *find_var_in_curr_scope(char *name, int len);
 

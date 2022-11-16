@@ -656,7 +656,8 @@ Type *parse_type() {
           error("expected member name");
         }
 
-        add_var(type->members, member_name->str, member_name->len, member_type);
+        add_var(type->members, member_name->str, member_name->len, member_type,
+                false);
 
         token_expect_punct(";");
 
@@ -701,7 +702,8 @@ Type *parse_type() {
           error("expected name");
         }
 
-        Var *var = add_var(&constants, enum_item->str, enum_item->len, type);
+        Var *var =
+            add_var(&constants, enum_item->str, enum_item->len, type, false);
         var->const_val = new_node_num(i);
 
         if (token_consume_punct("}")) {
@@ -763,8 +765,8 @@ static Node *parse_vardecl() {
     type = new_type_array_of(type, size);
   }
 
-  Var *lvar =
-      add_var(curr_scope->node->locals, tok_var->str, tok_var->len, type);
+  Var *lvar = add_var(curr_scope->node->locals, tok_var->str, tok_var->len,
+                      type, false);
 
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_VARDECL;
@@ -979,8 +981,6 @@ static Node *parse_decl() {
     error("decl: expected type");
   }
 
-  type->is_extern = is_extern;
-
   Token *ident = token_consume(TK_IDENT);
   if (!ident) {
     // struct S { int i; }; など識別子が登場しない場合、たぶん型の宣言
@@ -1015,6 +1015,8 @@ static Node *parse_decl() {
   node->ident = ident;
   node->source_pos = ident->str;
   node->source_len = ident->len;
+
+  // FIXME: これ ND_FUNCDECL のブランチにいれるべきでは
   node->locals = calloc(1, sizeof(Var));
 
   scope_create(node);
@@ -1049,7 +1051,8 @@ static Node *parse_decl() {
 
         Node *ident = calloc(1, sizeof(Node));
         ident->kind = ND_LVAR;
-        Var *lvar = add_var(curr_scope->node->locals, tok->str, tok->len, type);
+        Var *lvar =
+            add_var(curr_scope->node->locals, tok->str, tok->len, type, false);
         ident->lvar = lvar;
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
@@ -1131,7 +1134,7 @@ static Node *parse_decl() {
 
   token_expect_punct(";");
 
-  Var *gvar = add_var(&globals, ident->str, ident->len, type);
+  Var *gvar = add_var(&globals, ident->str, ident->len, type, is_extern);
   node->gvar = gvar;
 
   return node;

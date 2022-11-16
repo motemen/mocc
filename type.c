@@ -57,7 +57,7 @@ Var *find_var(Var *head, char *name, int len) {
 static int roundup_to_word(int size) { return (size + 3) / 4 * 4; }
 static int roundup_to_dword(int size) { return (size + 7) / 8 * 8; }
 
-Var *add_var(Var *head, char *name, int len, Type *type) {
+Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern) {
   if (type->ty == TY_VOID) {
     error("void is not a valid type");
   }
@@ -68,8 +68,10 @@ Var *add_var(Var *head, char *name, int len, Type *type) {
   Var *last = head;
   for (Var *var = last->next; var; last = var, var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
-      if (var->type->is_extern) {
-        var->type->is_extern = false;
+      if (var->is_extern || is_extern) {
+        if (is_extern == false) {
+          var->is_extern = false;
+        }
         return var;
       }
 
@@ -82,6 +84,7 @@ Var *add_var(Var *head, char *name, int len, Type *type) {
   Var *var = calloc(1, sizeof(Var));
   var->name = name;
   var->len = len;
+  var->is_extern = is_extern;
   if (is_struct_member) {
     // ここあまり自信がない
     if (last->type != NULL) {
