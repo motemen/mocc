@@ -79,6 +79,11 @@ int test_arithmetic() {
   is(3, a--, "a--");
   is(2, a--, "a--");
   is(1, a, "a");
+
+  is(2, ++a, "++a");
+  is(3, ++a, "++a");
+  is(2, --a, "--a");
+  is(1, --a, "--a");
 }
 
 int test_switch() {

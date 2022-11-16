@@ -134,6 +134,7 @@ static Node *new_node_num(int val) {
 //    unary       = ("+" | "-")? postfix
 //                | "*" unary
 //                | "&" unary
+//                | ("++" | "--") unary
 //                | "sizeof" unary
 //                | postfix
 //    postfix     = primary ("[" expr "]")*
@@ -449,6 +450,17 @@ static Node *parse_unary() {
   if (token_consume_punct("!")) {
     Node *node = parse_unary();
     return new_node(ND_NOT, node, NULL);
+  }
+
+  if (token_consume_punct("++")) {
+    // ++x は x = x + 1 に読み替えてよい
+    Node *node = parse_unary();
+    return new_node(ND_ASSIGN, node, new_node(ND_ADD, node, new_node_num(1)));
+  }
+
+  if (token_consume_punct("--")) {
+    Node *node = parse_unary();
+    return new_node(ND_ASSIGN, node, new_node(ND_ADD, node, new_node_num(-1)));
   }
 
   if (token_consume(TK_SIZEOF) != NULL) {
