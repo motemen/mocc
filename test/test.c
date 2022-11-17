@@ -228,9 +228,11 @@ int test_for_while() {
 
   sum = 0;
   int n = 1;
+  printf("# sum=%d n=%d\n", sum, n);
   while (n <= 10) {
     sum = sum + n;
     n = n + 1;
+    printf("# sum=%d n=%d\n", sum, n);
   }
   is(55, sum, "while 1+..+10");
 

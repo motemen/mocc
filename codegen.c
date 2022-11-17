@@ -104,10 +104,12 @@ static void codegen_epilogue(Scope *scope) {
 }
 
 Scope *curr_scope;
+int scope_id = 0;
 
 void scope_create(Node *node) {
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
+  scope->id = ++scope_id;
   curr_scope = scope;
 }
 
@@ -122,6 +124,7 @@ void scope_push(Node *node) {
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
   scope->parent = curr_scope;
+  scope->id = ++scope_id;
   curr_scope = scope;
 }
 
@@ -142,17 +145,9 @@ static Scope *scope_find(NodeKind kind) {
   return NULL;
 }
 
-static void codegen_scope_push(Node *node) {
-  printf("  addi sp, sp, %d\n", scope_offset(curr_scope));
-  scope_push(node);
-  printf("  addi sp, sp, -%d\n", scope_offset(curr_scope));
-}
+static void codegen_scope_push(Node *node) { scope_push(node); }
 
-static void codegen_scope_pop() {
-  printf("  addi sp, sp, %d\n", scope_offset(curr_scope));
-  scope_pop();
-  printf("  addi sp, sp, -%d\n", scope_offset(curr_scope));
-}
+static void codegen_scope_pop() { scope_pop(); }
 
 static void codegen_expr(Node *node);
 
@@ -756,12 +751,6 @@ static bool codegen_node(Node *node) {
   case ND_FOR: {
     codegen_scope_push(node);
 
-    for (Scope *scope = curr_scope; scope; scope = scope->parent) {
-      for (Var *var = node->locals->next; var; var = var->next) {
-        printf("  # var %.*s offset=%d\n", var->len, var->name, var->offset);
-      }
-    }
-
     if (node->lhs) {
       if (codegen_node(node->lhs))
         codegen_pop_discard();
@@ -893,6 +882,8 @@ static bool codegen_node(Node *node) {
   }
 
   case ND_BREAK: {
+    // FIXME: break が登場した時点でどこにジャンプするかは決まるので
+    // 文法解析のほうですませてしまう
     Scope *scope = scope_find(ND_WHILE);
     if (!scope) {
       scope = scope_find(ND_FOR);
@@ -910,6 +901,8 @@ static bool codegen_node(Node *node) {
   }
 
   case ND_CONTINUE: {
+    // FIXME: continue が登場した時点でどこにジャンプするかは決まるので
+    // 文法解析のほうですませてしまう
     Scope *scope = scope_find(ND_WHILE);
     if (!scope) {
       scope = scope_find(ND_FOR);

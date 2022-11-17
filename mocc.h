@@ -135,6 +135,7 @@ typedef struct Scope Scope;
 struct Scope {
   Scope *parent;
   Node *node;
+  int id;
   // ここにブロック中のローカル変数も出てくるかもしれない
 };
 
@@ -235,6 +236,8 @@ struct Var {
   bool is_struct_member;
 
   bool is_extern;
+  int scope_id; // 同じ名前だけどスコープが違うものは別の変数になる。(name,
+                // scope_id) でユニークにする
 };
 
 // 文字列リテラル!!!
@@ -254,9 +257,9 @@ Type *typeof_node(Node *node);
 
 char *type_to_string(Type *type);
 
-Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern);
+Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
+             int scope_id);
 Var *find_var(Var *head, char *name, int len);
-Var *find_var_in_curr_scope(char *name, int len);
 
 String *add_string(char *str, int len);
 

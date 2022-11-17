@@ -33,17 +33,6 @@ char *type_to_string(Type *type) {
   return "(unknown)";
 }
 
-Var *find_var_in_curr_scope(char *name, int len) {
-  for (Scope *scope = curr_scope; scope; scope = scope->parent) {
-    Var *var = find_var(scope->node->locals, name, len);
-    if (var != NULL) {
-      return var;
-    }
-  }
-
-  return NULL;
-}
-
 Var *find_var(Var *head, char *name, int len) {
   for (Var *var = head->next; var; var = var->next) {
     if (var->len == len && !strncmp(var->name, name, len)) {
@@ -57,7 +46,8 @@ Var *find_var(Var *head, char *name, int len) {
 static int roundup_to_word(int size) { return (size + 3) / 4 * 4; }
 static int roundup_to_dword(int size) { return (size + 7) / 8 * 8; }
 
-Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern) {
+Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
+             int scope_id) {
   if (type->ty == TY_VOID) {
     error("void is not a valid type");
   }
@@ -67,7 +57,8 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern) {
   int offset = head->offset;
   Var *last = head;
   for (Var *var = last->next; var; last = var, var = var->next) {
-    if (var->len == len && !strncmp(var->name, name, len)) {
+    if (var->scope_id == scope_id && var->len == len &&
+        !strncmp(var->name, name, len)) {
       if (var->is_extern || is_extern) {
         if (is_extern == false) {
           var->is_extern = false;
@@ -84,6 +75,7 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern) {
   Var *var = calloc(1, sizeof(Var));
   var->name = name;
   var->len = len;
+  var->scope_id = scope_id;
   var->is_extern = is_extern;
   if (is_struct_member) {
     // ここあまり自信がない

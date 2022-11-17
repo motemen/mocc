@@ -148,6 +148,31 @@ static Node *new_node_num(int val) {
 
 Node *parse_expr();
 
+static Var *find_var_in_curr_scope(char *name, int len) {
+  for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+    for (Var *var = scope->node->locals->next; var; var = var->next) {
+      if (var->scope_id == scope->id && var->len == len &&
+          strncmp(var->name, name, len) == 0) {
+        return var;
+      }
+    }
+  }
+
+  return NULL;
+}
+
+static void scope_flatten_to_parent(Scope *scope) {
+  Scope *parent = scope->parent;
+  assert(parent != NULL);
+
+  for (Var *var = parent->node->locals; var; var = var->next) {
+    if (var->next == NULL) {
+      var->next = scope->node->locals;
+      return;
+    }
+  }
+}
+
 static Node *parse_primary() {
   if (token_consume_punct("(")) {
     Node *node = parse_expr();
@@ -657,7 +682,7 @@ Type *parse_type() {
         }
 
         add_var(type->members, member_name->str, member_name->len, member_type,
-                false);
+                false, -1);
 
         token_expect_punct(";");
 
@@ -702,8 +727,8 @@ Type *parse_type() {
           error("expected name");
         }
 
-        Var *var =
-            add_var(&constants, enum_item->str, enum_item->len, type, false);
+        Var *var = add_var(&constants, enum_item->str, enum_item->len, type,
+                           false, -1);
         var->const_val = new_node_num(i);
 
         if (token_consume_punct("}")) {
@@ -766,7 +791,7 @@ static Node *parse_vardecl() {
   }
 
   Var *lvar = add_var(curr_scope->node->locals, tok_var->str, tok_var->len,
-                      type, false);
+                      type, false, curr_scope->id);
 
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_VARDECL;
@@ -913,6 +938,7 @@ Node *parse_stmt() {
       node->node4 = parse_stmt();
     }
 
+    scope_flatten_to_parent(curr_scope);
     scope_pop();
 
     return node;
@@ -1051,8 +1077,8 @@ static Node *parse_decl() {
 
         Node *ident = calloc(1, sizeof(Node));
         ident->kind = ND_LVAR;
-        Var *lvar =
-            add_var(curr_scope->node->locals, tok->str, tok->len, type, false);
+        Var *lvar = add_var(curr_scope->node->locals, tok->str, tok->len, type,
+                            false, curr_scope->id);
         ident->lvar = lvar;
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
@@ -1134,7 +1160,7 @@ static Node *parse_decl() {
 
   token_expect_punct(";");
 
-  Var *gvar = add_var(&globals, ident->str, ident->len, type, is_extern);
+  Var *gvar = add_var(&globals, ident->str, ident->len, type, is_extern, -1);
   node->gvar = gvar;
 
   return node;
