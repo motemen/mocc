@@ -148,6 +148,9 @@ static Node *new_node_num(int val) {
 
 Node *parse_expr();
 
+Scope *curr_scope;
+int scope_id = 0;
+
 static Var *find_var_in_curr_scope(char *name, int len) {
   for (Scope *scope = curr_scope; scope; scope = scope->parent) {
     for (Var *var = scope->node->locals->next; var; var = var->next) {
@@ -155,6 +158,54 @@ static Var *find_var_in_curr_scope(char *name, int len) {
           strncmp(var->name, name, len) == 0) {
         return var;
       }
+    }
+  }
+
+  return NULL;
+}
+
+static int scope_offset(Scope *scope) {
+  int max = scope->node->locals->offset;
+  for (Var *var = scope->node->locals->next; var; var = var->next) {
+    // 常にあとのほうが offset でかいはずなのでこれでよい
+    max = var->offset;
+  }
+  return max;
+}
+
+static void scope_create(Node *node) {
+  Scope *scope = calloc(1, sizeof(Scope));
+  scope->node = node;
+  scope->id = ++scope_id;
+  curr_scope = scope;
+}
+
+static void scope_push(Node *node) {
+  assert(curr_scope != NULL);
+
+  if (node->locals == NULL) {
+    node->locals = calloc(1, sizeof(Var));
+    node->locals->offset = scope_offset(curr_scope) + 8;
+  }
+
+  Scope *scope = calloc(1, sizeof(Scope));
+  scope->node = node;
+  scope->parent = curr_scope;
+  scope->id = ++scope_id;
+  curr_scope = scope;
+}
+
+static void scope_pop() {
+  assert(curr_scope != NULL);
+  curr_scope = curr_scope->parent;
+  assert(curr_scope != NULL);
+}
+
+static Scope *scope_find(NodeKind kind) {
+  assert(curr_scope != NULL);
+  for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+    if (scope->node->kind == kind) {
+      return scope;
     }
   }
 
@@ -620,7 +671,9 @@ static Node *parse_assign() {
   return node;
 }
 
-Node *parse_expr() { return parse_assign(); }
+Node *parse_expr() {
+  return parse_assign();
+}
 
 Node *parse_stmt();
 
