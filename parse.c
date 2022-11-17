@@ -366,10 +366,17 @@ Type *typeof_node(Node *node) {
     if (ltype->ty == TY_INT && rtype->ty == TY_PTR) {
       return rtype;
     }
+    if (ltype->ty == TY_PTR && rtype->ty == TY_PTR &&
+        ltype->base->ty == rtype->base->ty && node->kind == ND_SUB) {
+      // https://port70.net/~nsz/c/c11/n1570.html#6.5.6p9
+      // ポインタ同士の減算
+      return &int_type;
+    }
 
     error_at(node->source_pos,
-             "invalid or unimplemented pointer arithmetic: %s and %s",
-             type_to_string(ltype), type_to_string(rtype));
+             "invalid or unimplemented pointer arithmetic: %s (%s) and (%s)",
+             node_kind_to_str(node->kind), type_to_string(ltype),
+             type_to_string(rtype));
   }
 
   case ND_MUL:

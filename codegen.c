@@ -194,25 +194,57 @@ static void codegen_expr(Node *node) {
 
   case ND_ADD:
   case ND_SUB: {
-    int ptr_size = 0;
+    int lptr_size = 0;
+    int rptr_size = 0;
 
     // TODO: ltype しかみてないけど rtype もみたいよね
     Type *ltype = typeof_node(node->lhs);
     if (ltype->ty == TY_PTR || ltype->ty == TY_ARRAY) {
-      ptr_size = sizeof_type(ltype->base);
+      lptr_size = sizeof_type(ltype->base);
+    }
+
+    Type *rtype = typeof_node(node->rhs);
+    if (rtype->ty == TY_PTR || rtype->ty == TY_ARRAY) {
+      rptr_size = sizeof_type(rtype->base);
     }
 
     codegen_expr(node->lhs); // -> t0
     codegen_expr(node->rhs); // -> t1
 
-    printf("  # pointer arithmetic: ltype=(%s), ptr_size=%d\n",
-           type_to_string(ltype), ptr_size);
+    printf("  # pointer arithmetic: ltype=(%s), lptr_size=%d, rtype=(%s), "
+           "rptr_size=%d\n",
+           type_to_string(ltype), lptr_size, type_to_string(rtype), rptr_size);
 
-    codegen_pop_t1();
-    if (ptr_size > 1) {
-      printf("  # do pointer arithmetic\n");
-      printf("  li t3, %d\n", ptr_size);
-      printf("  mul t1, t1, t3\n");
+    if (lptr_size > 1) {
+      if (rptr_size > 1) {
+        if (node->kind != ND_SUB) {
+          error("must not happen (bug in parser)");
+        }
+        if (lptr_size != rptr_size) {
+          error("pointer arithmetic with different pointer types");
+        }
+        codegen_pop_t1();
+        codegen_pop_t0();
+
+        // ptr (t0) - ptr (t1)
+        // 減算したうえで base の size で割る
+        printf("  sub t0, t0, t1\n");
+        printf("  # do pointer arithmetic\n");
+        printf("  li t3, %d\n", lptr_size);
+        printf("  div t0, t0, t3\n");
+        codegen_push_t0();
+        return;
+      } else {
+        // ptr (t0) + int (t1)
+        // int のほうを size 倍する
+        codegen_pop_t1();
+        printf("  # do pointer arithmetic\n");
+        printf("  li t3, %d\n", lptr_size);
+        printf("  mul t1, t1, t3\n");
+      }
+    } else {
+      // こっちは普通の加減算
+      codegen_pop_t1();
     }
 
     codegen_pop_t0();
