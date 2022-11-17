@@ -182,11 +182,9 @@ static void scope_create(Node *node) {
 
 static void scope_push(Node *node) {
   assert(curr_scope != NULL);
+  assert(node->locals == NULL);
 
-  if (node->locals == NULL) {
-    node->locals = calloc(1, sizeof(Var));
-    node->locals->offset = scope_offset(curr_scope) + 8;
-  }
+  node->locals = calloc(1, sizeof(Var));
 
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
@@ -196,9 +194,23 @@ static void scope_push(Node *node) {
 }
 
 static void scope_pop() {
-  assert(curr_scope != NULL);
-  curr_scope = curr_scope->parent;
-  assert(curr_scope != NULL);
+  Scope *parent = curr_scope->parent;
+  assert(parent != NULL);
+
+  // このスコープに定義された変数を親スコープにマージする
+  int offset = scope_offset(parent);
+  for (Var *var = curr_scope->node->locals; var; var = var->next) {
+    var->offset += offset;
+  }
+
+  for (Var *var = parent->node->locals; var; var = var->next) {
+    if (var->next == NULL) {
+      var->next = curr_scope->node->locals;
+      break;
+    }
+  }
+
+  curr_scope = parent;
 }
 
 static Scope *scope_find(NodeKind kind) {
@@ -210,18 +222,6 @@ static Scope *scope_find(NodeKind kind) {
   }
 
   return NULL;
-}
-
-static void scope_flatten_to_parent(Scope *scope) {
-  Scope *parent = scope->parent;
-  assert(parent != NULL);
-
-  for (Var *var = parent->node->locals; var; var = var->next) {
-    if (var->next == NULL) {
-      var->next = scope->node->locals;
-      return;
-    }
-  }
 }
 
 static Node *parse_primary() {
@@ -692,6 +692,9 @@ Node *parse_block() {
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
 
+    // FIXME: 関数宣言の場合はスコープを作らないなどしたい (see test.sh)
+    scope_push(node);
+
     NodeList head = {};
     NodeList *cur = &head;
     while (!token_consume_punct("}")) {
@@ -702,6 +705,9 @@ Node *parse_block() {
     }
 
     node->nodes = head.next;
+
+    scope_pop();
+
     return node;
   }
 
@@ -1016,7 +1022,6 @@ Node *parse_stmt() {
       node->node4 = parse_stmt();
     }
 
-    scope_flatten_to_parent(curr_scope);
     scope_pop();
 
     return node;
