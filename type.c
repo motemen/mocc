@@ -11,6 +11,8 @@ char *type_to_string(Type *type) {
   char *buf = calloc(80, sizeof(char));
   if (type->ty == TY_INT) {
     return "int";
+  } else if (type->ty == TY_CHAR) {
+    return "char";
   } else if (type->ty == TY_PTR) {
     snprintf(buf, 80, "ptr to %s", type_to_string(type->base));
     return buf;
