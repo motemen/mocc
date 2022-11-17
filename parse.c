@@ -876,18 +876,21 @@ Node *parse_stmt() {
   }
 
   if (token_consume(TK_SWITCH) != NULL) {
-    token_expect_punct("(");
-    Node *expr = parse_expr();
-    token_expect_punct(")");
-    Node *stmt = parse_stmt();
-
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_SWITCH;
     node->label_index = ++label_index;
-    node->lhs = expr;
-    node->rhs = stmt;
-    node->source_pos = expr->source_pos;
-    node->source_len = expr->source_len;
+    node->source_pos = prev_token->str;
+    node->source_len = prev_token->len;
+
+    scope_push(node);
+
+    token_expect_punct("(");
+    node->lhs = parse_expr();
+    token_expect_punct(")");
+    node->rhs = parse_stmt();
+
+    scope_pop();
+
     return node;
   }
 
@@ -897,10 +900,15 @@ Node *parse_stmt() {
     node->label_index = ++label_index;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
+
+    scope_push(node);
+
     token_expect_punct("(");
     node->lhs = parse_expr();
     token_expect_punct(")");
     node->rhs = parse_stmt();
+
+    scope_pop();
 
     return node;
   }
@@ -949,6 +957,20 @@ Node *parse_stmt() {
     node->kind = ND_BREAK;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
+
+    Scope *target_scope = scope_find(ND_WHILE);
+    if (!target_scope) {
+      target_scope = scope_find(ND_FOR);
+    }
+    if (!target_scope) {
+      target_scope = scope_find(ND_SWITCH);
+    }
+    if (!target_scope) {
+      error("not in while, for or switch");
+    }
+
+    node->label_index = target_scope->node->label_index;
+
     token_expect_punct(";");
     return node;
   }
@@ -958,6 +980,16 @@ Node *parse_stmt() {
     node->kind = ND_CONTINUE;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
+
+    Scope *target_scope = scope_find(ND_WHILE);
+    if (!target_scope) {
+      target_scope = scope_find(ND_FOR);
+    }
+    if (!target_scope) {
+      error("not in while or for loop");
+    }
+    node->label_index = target_scope->node->label_index;
+
     token_expect_punct(";");
     return node;
   }

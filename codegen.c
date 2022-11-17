@@ -42,7 +42,7 @@ static int scope_offset(Scope *scope) {
   return max;
 }
 
-static Scope *scope_find(NodeKind kind);
+Scope *scope_find(NodeKind kind);
 
 static int curr_varargs_index() {
   Scope *scope = scope_find(ND_FUNCDECL);
@@ -134,7 +134,7 @@ void scope_pop() {
   assert(curr_scope != NULL);
 }
 
-static Scope *scope_find(NodeKind kind) {
+Scope *scope_find(NodeKind kind) {
   assert(curr_scope != NULL);
   for (Scope *scope = curr_scope; scope; scope = scope->parent) {
     if (scope->node->kind == kind) {
@@ -145,9 +145,11 @@ static Scope *scope_find(NodeKind kind) {
   return NULL;
 }
 
-static void codegen_scope_push(Node *node) { scope_push(node); }
+static void codegen_scope_push(Node *node) { /*scope_push(node);*/
+}
 
-static void codegen_scope_pop() { scope_pop(); }
+static void codegen_scope_pop() { /*scope_pop();*/
+}
 
 static void codegen_expr(Node *node);
 
@@ -881,40 +883,13 @@ static bool codegen_node(Node *node) {
     return false;
   }
 
-  case ND_BREAK: {
-    // FIXME: break が登場した時点でどこにジャンプするかは決まるので
-    // 文法解析のほうですませてしまう
-    Scope *scope = scope_find(ND_WHILE);
-    if (!scope) {
-      scope = scope_find(ND_FOR);
-    }
-    if (!scope) {
-      scope = scope_find(ND_SWITCH);
-    }
-    if (!scope) {
-      error("not in while or for loop");
-    }
-
-    printf("  j .Lbreak%03d\n", scope->node->label_index);
-
+  case ND_BREAK:
+    printf("  j .Lbreak%03d\n", node->label_index);
     return false;
-  }
 
-  case ND_CONTINUE: {
-    // FIXME: continue が登場した時点でどこにジャンプするかは決まるので
-    // 文法解析のほうですませてしまう
-    Scope *scope = scope_find(ND_WHILE);
-    if (!scope) {
-      scope = scope_find(ND_FOR);
-    }
-    if (!scope) {
-      error("not in while or for loop");
-    }
-
-    printf("  j .Lcontinue%03d\n", scope->node->label_index);
-
+  case ND_CONTINUE:
+    printf("  j .Lcontinue%03d\n", node->label_index);
     return false;
-  }
 
   case ND_CASE:
     printf("  # case %d\n", node->val);

@@ -144,6 +144,7 @@ extern Scope *curr_scope;
 void scope_create(Node *node);
 void scope_push(Node *node);
 void scope_pop();
+Scope *scope_find(NodeKind kind);
 
 void parse_program();
 extern Node *code[100];
