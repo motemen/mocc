@@ -259,6 +259,7 @@ assert_compile_error "either struct name nor members not" 'struct;'
 assert_compile_error "empty struct" 'struct A { int a; }; int main() { struct Z a; }'
 assert_compile_error "already defined" 'struct A { int a; }; struct A { int b; }; int main() {}'
 assert_compile_error "not a valid type" 'void a;'
+assert_compile_error "must return value" 'int f() { return; }'
 
 # assert_program 0 'int main() {}'
 # assert_program 0 'int main() { return 0; }'

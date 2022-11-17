@@ -97,28 +97,6 @@ void test_switch() {
   }
 }
 
-void test_func() {
-  printf("# func\n");
-  is(1, fact(0), "fact(0)");
-  is(120, fact(5), "fact(5)");
-  is(3628800, fact(10), "fact(10)");
-
-  is(1, fib(1), "fib(1)");
-  is(2, fib(2), "fib(2)");
-  is(3, fib(3), "fib(3)");
-  is(89, fib(10), "fib(10)");
-
-  is(66666, add(33333, 33333), "add(33333, 33333)");
-  is(-66666, add(33333, -99999), "add(33333, -99999)");
-
-  is(50000, f_if(1, 50000, 60000), "f_if(1, 50000, 60000)");
-  is(60000, f_if(0, 50000, 60000), "f_if(1, 50000, 60000)");
-
-  is(2, f_return_return(1), "f_return_return(1)");
-
-  is(13, f_comment(), "f_comment()");
-}
-
 int fact(int n) {
   if (n == 1 || n == 0)
     return 1;
@@ -151,6 +129,32 @@ int f_return_return(int val) {
 int f_comment() {
   return 1 + /* 2 + */ 3 // ;
                  * 4;
+}
+
+void f_empty_return() {
+  return;
+}
+
+void test_func() {
+  printf("# func\n");
+  is(1, fact(0), "fact(0)");
+  is(120, fact(5), "fact(5)");
+  is(3628800, fact(10), "fact(10)");
+
+  is(1, fib(1), "fib(1)");
+  is(2, fib(2), "fib(2)");
+  is(3, fib(3), "fib(3)");
+  is(89, fib(10), "fib(10)");
+
+  is(66666, add(33333, 33333), "add(33333, 33333)");
+  is(-66666, add(33333, -99999), "add(33333, -99999)");
+
+  is(50000, f_if(1, 50000, 60000), "f_if(1, 50000, 60000)");
+  is(60000, f_if(0, 50000, 60000), "f_if(1, 50000, 60000)");
+
+  is(2, f_return_return(1), "f_return_return(1)");
+
+  is(13, f_comment(), "f_comment()");
 }
 
 void test_array() {

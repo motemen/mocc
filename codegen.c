@@ -608,12 +608,12 @@ static bool codegen_node(Node *node) {
     return true;
 
   case ND_RETURN:
-    printf("  # ND_RETURN LHS {\n");
-    codegen_expr(node->lhs);
-    printf("  # ND_RETURN LHS }\n");
-    codegen_pop_t0();
+    if (node->lhs) {
+      codegen_expr(node->lhs);
+      codegen_pop_t0();
+      printf("  mv a0, t0\n");
+    }
 
-    printf("  mv a0, t0\n");
     codegen_epilogue();
 
     return false;

@@ -89,7 +89,7 @@ typedef enum {
 struct Node {
   NodeKind kind;
 
-  Node *lhs; // ND_IF, ND_WHILE のときは expr
+  Node *lhs; // ND_IF, ND_WHILE のときは expr // FIXME: node1 にしたい
   Node *rhs; // ND_IF, ND_WHILE のときは stmt
   Node *node3; // ND_IF のときは else, ND_FOR のときは i++ みたいなとこ
   Node *node4; // ND_FOR のときのみ stmt
@@ -109,6 +109,10 @@ struct Node {
   // そのうち関数の使用に宣言が必要になったら
   // これも Func * みたいなものになりそう (cf. lvar, gvar)
   Token *ident;
+  // ND_FUNCDECL のときだけ。返り値の型
+  // やはりこれがあることを考えると type+ident
+  // をひとつの型にしたほうがいい気もする
+  Type *type;
 
   int val;   // used when kind == ND_NUM
              // あと ND_STRING のとき str_lits の index
@@ -117,6 +121,7 @@ struct Node {
   Var *locals;
 
   int label_index; // ND_WHILE || ND_FOR
+                   // FIXME: scope->id ですませられる説がある
 
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用

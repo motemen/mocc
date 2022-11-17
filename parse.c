@@ -901,8 +901,17 @@ Node *parse_stmt() {
     node->kind = ND_RETURN;
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
+    if (token_consume_punct(";")) {
+      Scope *func = scope_find(ND_FUNCDECL);
+      if (func->node->type->ty != TY_VOID) {
+        error("must return value from non-void function");
+      }
+      return node;
+    }
+
     node->lhs = parse_expr();
     token_expect_punct(";");
+
     return node;
   }
 
@@ -1134,6 +1143,7 @@ static Node *parse_decl() {
 
   if (token_consume_punct("(")) {
     node->kind = ND_FUNCDECL;
+    node->type = type;
 
     if (token_consume_punct(")")) {
       // 引数ナシ
@@ -1182,8 +1192,6 @@ static Node *parse_decl() {
 
       node->args = head.next;
     }
-
-    // TODO: 関数の型を～～
 
     Node *block = parse_block();
     if (!block) {
