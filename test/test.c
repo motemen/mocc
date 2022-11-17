@@ -27,7 +27,7 @@ int ok(int ok, char *message) {
   }
 }
 
-int test_arithmetic() {
+void test_arithmetic() {
   printf("# arithmetic\n");
   is(1, 1, "1");
   is(36, 4 * 9, "4 * 9");
@@ -86,7 +86,7 @@ int test_arithmetic() {
   is(1, --a, "--a");
 }
 
-int test_switch() {
+void test_switch() {
   int a = 1;
   switch (a) {
   case 1:
@@ -97,7 +97,7 @@ int test_switch() {
   }
 }
 
-int test_func() {
+void test_func() {
   printf("# func\n");
   is(1, fact(0), "fact(0)");
   is(120, fact(5), "fact(5)");
@@ -131,7 +131,9 @@ int fib(int n) {
   return fib(n - 2) + fib(n - 1);
 }
 
-int add(int x, int y) { return x + y; }
+int add(int x, int y) {
+  return x + y;
+}
 
 int f_if(int b, int x, int y) {
   if (b) {
@@ -151,7 +153,7 @@ int f_comment() {
                  * 4;
 }
 
-int test_array() {
+void test_array() {
   printf("# array\n");
 
   int a[100];
@@ -188,7 +190,7 @@ int test_array() {
   is(9999, mat[8][12], "*(mat[8]+12) = 9999; mat[8][12]");
 }
 
-int test_string_literal() {
+void test_string_literal() {
   printf("# string literal\n");
 
   char *s = "Hello,\nworld!";
@@ -204,7 +206,7 @@ int test_string_literal() {
   is(39, c2, "'\\'' == 39");
 }
 
-int test_for_while() {
+void test_for_while() {
   printf("# for while\n");
 
   int sum = 0;
@@ -263,7 +265,7 @@ int test_for_while() {
   is(5, i, "for(;;) break at 5");
 }
 
-int test_pointer() {
+void test_pointer() {
   int x;
   int *p = &x;
   int **pp = &p;
@@ -291,7 +293,7 @@ int gvar_4[5] = {1, 2, 3};
 
 extern int ext_var;
 
-int test_global_var() {
+void test_global_var() {
   is(42, gvar_1, "gvar_1 = 42");
   is(-1, gvar_2, "gvar_2 = -1");
   is(0, gvar_3, "gvar_3");
@@ -300,7 +302,7 @@ int test_global_var() {
   is(11111, ext_var, "extern int ext_var");
 }
 
-int test_var() {
+void test_var() {
   int a = 2;
   int b = a * 3;
   is(2, a, "int a = 2");
@@ -331,7 +333,7 @@ struct Struct3 {
   B b;
 };
 
-int test_struct() {
+void test_struct() {
   struct Struct1 s1;
   struct Struct1 *sp = &s1;
   struct Struct2 s2;
@@ -345,7 +347,7 @@ int test_struct() {
   is(111, p[1], "p = s1.s; p[1]");
 }
 
-int test_enum() {
+void test_enum() {
   is(0, A1, "enum A { A1, A2, A3 }; A1");
   is(1, A2, "enum A { A1, A2, A3 }; A2");
   is(2, B3, "B2");
@@ -357,7 +359,7 @@ int test_enum() {
 typedef struct Struct2 S2;
 typedef enum A A;
 
-int test_typedef() {
+void test_typedef() {
   S2 s;
   s.c = 123;
   is(123, s.c, "typedef struct Struct2 S2; S2 s; s.c = 123; s.c");
@@ -368,7 +370,7 @@ A return_typedef_type() {
   return a;
 }
 
-int test_sizeof() {
+void test_sizeof() {
   printf("# sizeof\n");
 
   int x;
