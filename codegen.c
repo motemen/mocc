@@ -617,6 +617,38 @@ static void codegen_builtin_va_start(Node *ap) {
   printf("  sd t1, 0(t0)\n");
 }
 
+static void codegen_init_struct_var(Node *node_var, Type *type,
+                                    NodeList *init) {
+  Var *member = type->members->next;
+  for (NodeList *item = init; item; item = item->next) {
+    if (item->node == NULL) {
+      break;
+    }
+    Node *mem = new_node(ND_MEMBER, node_var, NULL);
+    mem->ident = calloc(1, sizeof(Token));
+    mem->ident->str = member->name;
+    mem->ident->len = member->len;
+
+    Node *assign = new_node(ND_ASSIGN, mem, item->node);
+    codegen_expr(assign);
+    codegen_pop_discard();
+
+    member = member->next;
+  }
+
+  for (; member; member = member->next) {
+    // ここで初期化されていないメンバーは 0 で初期化する
+    Node *node_mem = new_node(ND_MEMBER, node_var, NULL);
+    node_mem->ident = calloc(1, sizeof(Token));
+    node_mem->ident->str = member->name;
+    node_mem->ident->len = member->len;
+
+    Node *assign = new_node(ND_ASSIGN, node_mem, new_node(ND_NUM, NULL, NULL));
+    codegen_expr(assign);
+    codegen_pop_discard();
+  }
+}
+
 static bool codegen_node(Node *node) {
   switch (node->kind) {
   case ND_NUM:
@@ -822,42 +854,13 @@ static bool codegen_node(Node *node) {
       codegen_expr(assign);
       codegen_pop_discard();
     } else if (node->nodes) {
-      // 構造体の初期化だとみなす
-      Var *member = node->lvar->type->members->next;
-      for (NodeList *item = node->nodes; item; item = item->next) {
-        if (item->node == NULL) {
-          break;
-        }
+      if (node->lvar->type->ty == TY_STRUCT) {
         Node *lvar = calloc(1, sizeof(Node));
         lvar->kind = ND_LVAR;
         lvar->lvar = node->lvar;
-
-        Node *mem = new_node(ND_MEMBER, lvar, NULL);
-        mem->ident = calloc(1, sizeof(Token));
-        mem->ident->str = member->name;
-        mem->ident->len = member->len;
-
-        Node *assign = new_node(ND_ASSIGN, mem, item->node);
-        codegen_expr(assign);
-        codegen_pop_discard();
-
-        member = member->next;
-      }
-
-      for (Var *m = member; m; m = m->next) {
-        // ここで初期化されていないメンバーは 0 で初期化する
-        Node *lvar = calloc(1, sizeof(Node));
-        lvar->kind = ND_LVAR;
-        lvar->lvar = node->lvar;
-
-        Node *mem = new_node(ND_MEMBER, lvar, NULL);
-        mem->ident = calloc(1, sizeof(Token));
-        mem->ident->str = m->name;
-        mem->ident->len = m->len;
-
-        Node *assign = new_node(ND_ASSIGN, mem, new_node(ND_NUM, NULL, NULL));
-        codegen_expr(assign);
-        codegen_pop_discard();
+        codegen_init_struct_var(lvar, node->lvar->type, node->nodes);
+      } else {
+        error("not implemented for type (%s)", type_to_string(node->type));
       }
     }
 
@@ -879,18 +882,53 @@ static bool codegen_node(Node *node) {
       // TODO: long だったら quad とからしい。dword?
       printf("  .word %d\n", node->rhs->val);
     } else if (node->nodes != NULL) {
-      if (node->gvar->type->ty != TY_ARRAY) {
-        error("array initializer specified but declared is not an array");
-      }
-      int len = node->gvar->type->array_size;
-      for (NodeList *n = node->nodes; n; n = n->next) {
-        printf("  .word %d\n", n->node->val);
-        if (--len < 0) {
-          error("too many elements in array initializer");
+      if (node->gvar->type->ty == TY_ARRAY) {
+        int len = node->gvar->type->array_size;
+        for (NodeList *n = node->nodes; n; n = n->next) {
+          printf("  .word %d\n", n->node->val);
+          if (--len < 0) {
+            error("too many elements in array initializer");
+          }
         }
-      }
-      while (len--) {
-        printf("  .zero %d\n", sizeof_type(node->gvar->type->base));
+        while (len--) {
+          printf("  .zero %d\n", sizeof_type(node->gvar->type->base));
+        }
+      } else if (node->gvar->type->ty == TY_STRUCT) {
+        Var *member = node->gvar->type->members->next;
+        for (NodeList *n = node->nodes; n; n = n->next) {
+          switch (sizeof_type(member->type)) {
+          case 1:
+            printf("  .byte %d\n", n->node->val);
+            break;
+          case 4:
+            printf("  .word %d\n", n->node->val);
+            break;
+          case 8:
+            printf("  .dword %d\n", n->node->val);
+            break;
+          default:
+            error("unsupported member type (%s)", type_to_string(member->type));
+          }
+          member = member->next;
+        }
+        for (; member; member = member->next) {
+          switch (sizeof_type(member->type)) {
+          case 1:
+            printf("  .byte 0\n");
+            break;
+          case 4:
+            printf("  .word 0\n");
+            break;
+          case 8:
+            printf("  .dword 0\n");
+            break;
+          default:
+            error("unsupported member type (%s)", type_to_string(member->type));
+          }
+        }
+      } else {
+        error("global initializer not supported for type (%s)",
+              type_to_string(node->gvar->type));
       }
     } else {
       printf("  .zero %d\n", sizeof_type(node->gvar->type));

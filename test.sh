@@ -119,7 +119,7 @@ assert_compile_error "variable already defined: 'x'" 'int main() { int x; int x;
 # assert_compile_error "variable already defined: 'num'" 'int foo(int num) { int num; }' # FIXME
 
 assert_compile_error "too many elements in array initializer" 'int a[3] = {1, 2, 3, 4};'
-assert_compile_error "array initializer specified but declared is not an array" 'int n = {1, 2, 3, 4};'
+assert_compile_error "global initializer not supported" 'int n = {1, 2, 3, 4};'
 
 assert_compile_error "not in while or for loop" 'int main() { continue; }'
 

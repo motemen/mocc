@@ -297,22 +297,6 @@ void test_pointer() {
   is(8, sizeof(vp), "void *vp; sizeof(vp)");
 }
 
-int gvar_1 = 42;
-int gvar_2 = -1;
-int gvar_3; // 初期化子なし
-int gvar_4[5] = {1, 2, 3};
-
-extern int ext_var;
-
-void test_global_var() {
-  is(42, gvar_1, "gvar_1 = 42");
-  is(-1, gvar_2, "gvar_2 = -1");
-  is(0, gvar_3, "gvar_3");
-  is(1, gvar_4[0], "gvar_4 = {1, 2, 3}; gvar_4[0]");
-  is(0, gvar_4[4], "gvar_4 = {1, 2, 3}; gvar_4[4]");
-  is(11111, ext_var, "extern int ext_var");
-}
-
 void test_var() {
   int a = 2;
   int b = a * 3;
@@ -431,6 +415,25 @@ void test_vaargs_sub(char *expect, char *fmt, ...) {
 void test_varargs() {
   test_vaargs_sub("hello va_list! x and 8888", "hello va_list! %c and %d", 'x',
                   8888);
+}
+
+int gvar_1 = 42;
+int gvar_2 = -1;
+int gvar_3; // 初期化子なし
+int gvar_4[5] = {1, 2, 3};
+struct Struct1 gvar_5 = {98765};
+
+extern int ext_var;
+
+void test_global_var() {
+  is(42, gvar_1, "gvar_1 = 42");
+  is(-1, gvar_2, "gvar_2 = -1");
+  is(0, gvar_3, "gvar_3");
+  is(1, gvar_4[0], "gvar_4 = {1, 2, 3}; gvar_4[0]");
+  is(0, gvar_4[4], "gvar_4 = {1, 2, 3}; gvar_4[4]");
+  is(11111, ext_var, "extern int ext_var");
+  is(98765, gvar_5.a, "struct Struct1 gvar_5 = {98765}; gvar_5.a");
+  is(0, gvar_5.b, "struct Struct1 gvar_5 = {98765}; gvar_5.b");
 }
 
 int main() {

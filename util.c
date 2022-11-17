@@ -1,7 +1,7 @@
 #include "mocc.h"
 
 noreturn void verror_at(char *loc, char *fmt, va_list ap) {
-  if (loc) {
+  if (loc && *loc) {
     char *line = loc;
     while (user_input < line && line[-1] != '\n') {
       line--;
