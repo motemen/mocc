@@ -124,7 +124,7 @@ static Node *new_node_num(int val) {
 //    vardecl     = type ident ("[" num "]")? ("=" assign | initializer)?
 //    expr        = assign
 //    assign      = cond
-//                | unary ("=" assign)?
+//                | unary (("=" | "+=" | "-=") assign)?
 //    cond        = or ("?" expr ":" cond)?
 //    or          = equality ("||" equality)*
 //    equality    = relational ("==" relational | "!=" relational)*
@@ -663,10 +663,18 @@ static Node *parse_cond() {
   return node;
 }
 
+// https://port70.net/~nsz/c/c11/n1570.html#6.5.16
 static Node *parse_assign() {
   Node *node = parse_cond(); // ほんとは cond | unary "=" assign なのだが
   if (token_consume_punct("=")) {
     node = new_node(ND_ASSIGN, node, parse_assign());
+  } else if (token_consume_punct("+=")) {
+    // node += expr は node = node + expr に読み替えてよい
+    node = new_node(ND_ASSIGN, node, new_node(ND_ADD, node, parse_assign()));
+  } else if (token_consume_punct("-=")) {
+    node = new_node(ND_ASSIGN, node, new_node(ND_SUB, node, parse_assign()));
+  } else if (token_consume_punct("*=")) {
+    node = new_node(ND_ASSIGN, node, new_node(ND_MUL, node, parse_assign()));
   }
   return node;
 }

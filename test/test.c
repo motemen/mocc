@@ -84,6 +84,13 @@ void test_arithmetic() {
   is(3, ++a, "++a");
   is(2, --a, "--a");
   is(1, --a, "--a");
+
+  a += 100;
+  is(101, a, "a += 100");
+  a -= 99;
+  is(2, a, "a -= 99");
+  a *= 1000;
+  is(2000, a, "a *= 1000");
 }
 
 void test_switch() {
