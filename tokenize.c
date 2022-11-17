@@ -35,7 +35,9 @@ bool token_consume_type(char *type) {
   return true;
 }
 
-bool token_at_eof() { return curr_token->kind == TK_EOF; }
+bool token_at_eof() {
+  return curr_token->kind == TK_EOF;
+}
 
 void token_expect_punct(char *op) {
   if (!token_consume_punct(op)) {
@@ -68,7 +70,9 @@ static Token *new_token_num(Token *cur, int val) {
   return tok;
 }
 
-static bool isident(char ch) { return isalnum(ch) || ch == '_'; }
+static bool isident(char ch) {
+  return isalnum(ch) || ch == '_';
+}
 
 void tokenize(char *p) {
   Token head;

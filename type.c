@@ -43,8 +43,12 @@ Var *find_var(Var *head, char *name, int len) {
   return NULL;
 }
 
-static int roundup_to_word(int size) { return (size + 3) / 4 * 4; }
-static int roundup_to_dword(int size) { return (size + 7) / 8 * 8; }
+static int roundup_to_word(int size) {
+  return (size + 3) / 4 * 4;
+}
+static int roundup_to_dword(int size) {
+  return (size + 7) / 8 * 8;
+}
 
 Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
              int scope_id) {
