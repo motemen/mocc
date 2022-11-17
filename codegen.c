@@ -531,6 +531,12 @@ static void codegen_expr(Node *node) {
 
     return;
 
+  case ND_COMMA:
+    codegen_expr(node->lhs);
+    codegen_pop_discard();
+    codegen_expr(node->rhs);
+    return;
+
   case ND_RETURN:
   case ND_IF:
   case ND_SWITCH:
@@ -604,6 +610,7 @@ static bool codegen_node(Node *node) {
   case ND_MEMBER:
   case ND_NOT:
   case ND_POSTINC:
+  case ND_COMMA:
     codegen_expr(node);
     return true;
 

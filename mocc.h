@@ -84,6 +84,7 @@ typedef enum {
   ND_NOP,
   ND_MEMBER,
   ND_POSTINC,
+  ND_COMMA,
 } NodeKind;
 
 struct Node {

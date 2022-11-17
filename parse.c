@@ -78,6 +78,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_DEFAULT";
   case ND_POSTINC:
     return "ND_POSTINC";
+  case ND_COMMA:
+    return "ND_COMMA";
   }
 
   return "(unknown)";
@@ -122,7 +124,7 @@ static Node *new_node_num(int val) {
 //                | vardecl ";"
 //                | "case" expr ":" stmt
 //    vardecl     = type ident ("[" num "]")? ("=" assign | initializer)?
-//    expr        = assign
+//    expr        = assign ("," assign)*
 //    assign      = cond
 //                | unary (("=" | "+=" | "-=") assign)?
 //    cond        = or ("?" expr ":" cond)?
@@ -147,6 +149,7 @@ static Node *new_node_num(int val) {
 //    string      = /"[^"]*"/
 
 Node *parse_expr();
+static Node *parse_assign();
 
 Scope *curr_scope;
 int scope_id = 0;
@@ -250,7 +253,7 @@ static Node *parse_primary() {
         NodeList *cur = &head;
         while (true) {
           NodeList *node_item = calloc(1, sizeof(NodeList));
-          node_item->node = parse_expr();
+          node_item->node = parse_assign();
           cur->next = node_item;
           cur = cur->next;
 
@@ -679,8 +682,15 @@ static Node *parse_assign() {
   return node;
 }
 
+// https://port70.net/~nsz/c/c11/n1570.html#6.5.17
 Node *parse_expr() {
-  return parse_assign();
+  Node *expr = parse_assign();
+  if (token_consume_punct(",")) {
+    Node *node = new_node(ND_COMMA, expr, parse_expr());
+    return node;
+  }
+
+  return expr;
 }
 
 Node *parse_stmt();
@@ -1246,7 +1256,7 @@ static Node *parse_decl() {
         NodeList *cur = &head;
         while (true) {
           NodeList *node_item = calloc(1, sizeof(NodeList));
-          node_item->node = new_node_num(compute_const_expr(parse_expr()));
+          node_item->node = new_node_num(compute_const_expr(parse_assign()));
           cur->next = node_item;
           cur = cur->next;
 
