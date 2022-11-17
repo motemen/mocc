@@ -821,6 +821,44 @@ static bool codegen_node(Node *node) {
       Node *assign = new_node(ND_ASSIGN, lvar, node->rhs);
       codegen_expr(assign);
       codegen_pop_discard();
+    } else if (node->nodes) {
+      // 構造体の初期化だとみなす
+      Var *member = node->lvar->type->members->next;
+      for (NodeList *item = node->nodes; item; item = item->next) {
+        if (item->node == NULL) {
+          break;
+        }
+        Node *lvar = calloc(1, sizeof(Node));
+        lvar->kind = ND_LVAR;
+        lvar->lvar = node->lvar;
+
+        Node *mem = new_node(ND_MEMBER, lvar, NULL);
+        mem->ident = calloc(1, sizeof(Token));
+        mem->ident->str = member->name;
+        mem->ident->len = member->len;
+
+        Node *assign = new_node(ND_ASSIGN, mem, item->node);
+        codegen_expr(assign);
+        codegen_pop_discard();
+
+        member = member->next;
+      }
+
+      for (Var *m = member; m; m = m->next) {
+        // ここで初期化されていないメンバーは 0 で初期化する
+        Node *lvar = calloc(1, sizeof(Node));
+        lvar->kind = ND_LVAR;
+        lvar->lvar = node->lvar;
+
+        Node *mem = new_node(ND_MEMBER, lvar, NULL);
+        mem->ident = calloc(1, sizeof(Token));
+        mem->ident->str = m->name;
+        mem->ident->len = m->len;
+
+        Node *assign = new_node(ND_ASSIGN, mem, new_node(ND_NUM, NULL, NULL));
+        codegen_expr(assign);
+        codegen_pop_discard();
+      }
     }
 
     return false;

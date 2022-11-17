@@ -323,8 +323,8 @@ static Node *parse_primary() {
   error("expected primary: () or ident or string or number");
 }
 
-Type int_type = {TY_INT, NULL};
-Type char_type = {TY_CHAR, NULL};
+Type int_type = {TY_INT};
+Type char_type = {TY_CHAR};
 
 static Type *new_type_ptr_to(Type *base) {
   Type *type = calloc(1, sizeof(Type));
@@ -857,6 +857,32 @@ Type *parse_type() {
   return type;
 }
 
+// https://port70.net/~nsz/c/c11/n1570.html#6.7.9
+static NodeList *parse_initializer_list() {
+  if (token_consume_punct("{") == false) {
+    return NULL;
+  }
+  if (token_consume_punct("}")) {
+    return calloc(1, sizeof(NodeList));
+  }
+
+  NodeList head = {};
+  for (NodeList *cur = &head;;) {
+    NodeList *node_item = calloc(1, sizeof(NodeList));
+    node_item->node = parse_assign();
+    cur->next = node_item;
+    cur = cur->next;
+
+    if (token_consume_punct("}")) {
+      break;
+    }
+
+    token_expect_punct(",");
+  }
+
+  return head.next;
+}
+
 static Node *parse_vardecl() {
   Type *type = parse_type();
   if (type == NULL)
@@ -884,7 +910,12 @@ static Node *parse_vardecl() {
   node->source_len = tok_var->len;
 
   if (token_consume_punct("=")) {
-    node->rhs = parse_expr();
+    NodeList *init_list = parse_initializer_list();
+    if (init_list != NULL) {
+      node->nodes = init_list;
+    } else {
+      node->rhs = parse_expr();
+    }
   }
 
   token_expect_punct(";");

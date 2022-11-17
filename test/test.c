@@ -356,6 +356,16 @@ void test_struct() {
 
   char *p = s1.s;
   is(111, p[1], "p = s1.s; p[1]");
+
+  struct Struct1 s3 = {1, 2, "hello"};
+  is(1, s3.a, "struct Struct1 s3 = {1, 2, 'hello'}; s3.a");
+  is(2, s3.b, "struct Struct1 s3 = {1, 2, 'hello'}; s3.b");
+  is(0, strcmp("hello", s3.s), "struct Struct1 s3 = {1, 2, 'hello'}; s3.s");
+
+  struct Struct1 s4 = {9999};
+  is(9999, s4.a, "struct Struct1 s4 = {9999}; s4.a");
+  is(0, s4.b, "struct Struct1 s4 = {9999}; s4.b");
+  is(0, s4.s, "struct Struct1 s4 = {9999}; s4.s");
 }
 
 void test_enum() {
