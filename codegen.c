@@ -211,9 +211,8 @@ static void codegen_expr(Node *node) {
     codegen_expr(node->lhs); // -> t0
     codegen_expr(node->rhs); // -> t1
 
-    printf("  # pointer arithmetic: ltype=(%s), lptr_size=%d, rtype=(%s), "
-           "rptr_size=%d\n",
-           type_to_string(ltype), lptr_size, type_to_string(rtype), rptr_size);
+    printf("  # pointer arithmetic: ltype=(%s), rtype=(%s)",
+           type_to_string(ltype), type_to_string(rtype));
 
     if (lptr_size > 1) {
       if (rptr_size > 1) {

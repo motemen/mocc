@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -g -Werror -fprofile-instr-generate -fcoverage-mapping
+CFLAGS=-std=c11 -g -Werror -Wno-error=format -fprofile-instr-generate -fcoverage-mapping
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
