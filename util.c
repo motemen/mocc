@@ -49,3 +49,12 @@ noreturn void error(char *fmt, ...) {
     verror_at(curr_token->str, fmt, ap);
   }
 }
+
+void __debug_self(char *fmt, ...) {
+#ifdef __mocc_self__
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+#endif
+}

@@ -1361,11 +1361,12 @@ static Node *parse_decl() {
   return node;
 }
 
-Node *code[100]; // FIXME
+Node *code[10000]; // FIXME
 
 void parse_program() {
   int i = 0;
   while (!token_at_eof()) {
+    __debug_self("parse_program: %d", i);
     code[i++] = parse_decl();
   }
   code[i] = NULL;

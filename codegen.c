@@ -810,6 +810,7 @@ static bool codegen_node(Node *node) {
 
   case ND_FUNCDECL:
     printf("\n");
+    printf("  .global %.*s\n", node->ident->len, node->ident->str);
     printf("  .text\n");
     printf("%.*s:\n", node->ident->len, node->ident->str);
 
@@ -875,6 +876,7 @@ static bool codegen_node(Node *node) {
     }
 
     printf("\n");
+    printf("  .global %.*s\n", node->gvar->len, node->gvar->name);
     printf("  .data\n");
     printf("%.*s:\n", node->gvar->len, node->gvar->name);
     if (node->rhs != NULL) {

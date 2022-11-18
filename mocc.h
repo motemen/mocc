@@ -8,8 +8,21 @@ typedef void *va_list;
 #define SEEK_SET 0
 #define SEEK_END 2
 
-extern void *stdin;
-extern void *stderr;
+// extern void *stdin;
+// extern void *stderr;
+
+struct _reent {
+  int _errno;
+  void *_stdin;
+  void *_stdout;
+  void *_stderr;
+};
+
+extern struct _reent *_impure_ptr;
+
+#define stdin (_impure_ptr->_stdin)
+#define stderr (_impure_ptr->_stderr)
+
 extern int errno;
 
 #define __attribute__(x)
@@ -19,6 +32,33 @@ extern int errno;
 #define true (1)
 #define false (0)
 #define static
+
+#define assert(x) 1
+
+int printf();
+int fopen();
+int strncmp();
+int strlen();
+int fprintf();
+char *strerror();
+int vsnprintf();
+int vfprintf();
+void *calloc();
+int isalnum();
+int isspace();
+int snprintf();
+int strstr();
+int strchr();
+int isdigit();
+int strtol();
+void exit();
+int fseek();
+int ftell();
+int fread();
+int fclose();
+int realloc();
+int ferror();
+int feof();
 
 #else
 
@@ -147,10 +187,11 @@ struct Scope {
 };
 
 void parse_program();
-extern Node *code[100];
+extern Node *code[10000];
 char *node_kind_to_str(NodeKind kind);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 char *type_to_str(Type *type);
+void __debug_self(char *fmt, ...);
 
 typedef enum {
   TK_PUNCT,

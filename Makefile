@@ -16,6 +16,10 @@ test: mocc
 clean:
 	rm -f mocc *.o *~ tmp* *.gcov *.gcda *.gcno
 
+self.out: mocc
+	./selfcompile.sh && riscv64-unknown-elf-gcc -static self/*.s -o self.out
+
+
 .PHONY: test clean
 
 # cc -MM -MF - *.c

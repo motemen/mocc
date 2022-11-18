@@ -75,13 +75,17 @@ int main(int argc, char **argv) {
   if (strncmp(argv[1], "-", 1) == 0) {
     user_input = read_stdin();
   } else {
+    __debug_self("read_file");
     user_input = read_file(argv[1]);
   }
 
+  __debug_self("tokenize");
   tokenize(user_input);
 
+  __debug_self("parse_program");
   parse_program();
 
+  __debug_self("codegen");
   codegen();
 
   return 0;

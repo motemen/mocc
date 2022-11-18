@@ -4,6 +4,9 @@ Token *curr_token;
 Token *prev_token;
 
 Token *token_consume(TokenKind kind) {
+  __debug_self("token_consume: %.*s (%d)", curr_token->len, curr_token->str,
+               curr_token->kind);
+
   if (curr_token->kind != kind) {
     return NULL;
   }
