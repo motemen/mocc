@@ -185,13 +185,24 @@ Scope *curr_scope;
 int scope_id = 0;
 
 static Var *find_var_in_curr_scope(char *name, int len) {
+  __debug_self("find_var_in_curr_scope: %.*s", len, name);
+
   for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+    __debug_self("  scope->id=%d", scope->id);
+    __debug_self("  scope->node->loacls=%p", scope->node->locals);
     for (Var *var = scope->node->locals->next; var; var = var->next) {
+      __debug_self("    var=%p", var);
+      __debug_self("    var->name=%.*s (%p)", var->len, var->name, var->name);
+      __debug_self("    var->scope_id=%d, scope->id=%d", var->scope_id,
+                   scope->id);
+      __debug_self("    var->next=%p", var->next);
       if (var->scope_id == scope->id && var->len == len &&
           strncmp(var->name, name, len) == 0) {
+        __debug_self("      find_var_in_curr_scope: return");
         return var;
       }
     }
+    __debug_self("  scope->id=%d: end", scope->id);
   }
 
   return NULL;
@@ -236,9 +247,10 @@ static void scope_pop() {
     var->offset += offset;
   }
 
+  // ここでやってることがおかしい説
   for (Var *var = parent->node->locals; var; var = var->next) {
     if (var->next == NULL) {
-      var->next = curr_scope->node->locals;
+      var->next = curr_scope->node->locals->next;
       break;
     }
   }
@@ -276,6 +288,7 @@ static Node *parse_primary() {
       node->source_pos = tok->str;
       node->source_len = tok->len;
 
+      __debug_self("ND_CALL");
       Func *func = find_func(tok->str, tok->len);
       if (func == NULL) {
         if (tok->len == 8 && strncmp(tok->str, "va_start", 8) == 0) {
@@ -287,6 +300,7 @@ static Node *parse_primary() {
         node->type = func->type;
       }
 
+      __debug_self("args");
       if (token_consume_punct(")")) {
         // 引数ナシ
       } else {
@@ -296,17 +310,23 @@ static Node *parse_primary() {
           NodeList *node_item = calloc(1, sizeof(NodeList));
           node_item->node = parse_assign();
           cur->next = node_item;
+          __debug_self("* args got: %.*s cur=%p cur->next=%p",
+                       node_item->node->source_len, node_item->node->source_pos,
+                       cur, cur->next);
           cur = cur->next;
+          __debug_self("* args got: x");
 
           if (token_consume_punct(")")) {
             break;
           }
 
           token_expect_punct(",");
+          __debug_self(",");
         }
 
         node->nodes = head.next;
       }
+      __debug_self("args: done");
 
       return node;
     }
@@ -685,6 +705,7 @@ static Node *parse_and() {
 // or = and
 //    | or "||" and
 static Node *parse_or() {
+  __debug_self("parse_or");
   Node *node = parse_and();
   for (;;) {
     if (token_consume_punct("||")) {
@@ -696,6 +717,7 @@ static Node *parse_or() {
 }
 
 static Node *parse_cond() {
+  __debug_self("parse_cond");
   Node *node = parse_or();
 
   if (token_consume_punct("?")) {
@@ -714,6 +736,8 @@ static Node *parse_cond() {
 
 // https://port70.net/~nsz/c/c11/n1570.html#6.5.16
 static Node *parse_assign() {
+  __debug_self("parse_assign");
+
   Node *node = parse_cond(); // ほんとは cond | unary "=" assign なのだが
   if (token_consume_punct("=")) {
     node = new_node(ND_ASSIGN, node, parse_assign());
@@ -870,6 +894,7 @@ Type *parse_type() {
     if (curr_token->kind != TK_IDENT) {
       return NULL;
     }
+    __debug_self("find_defined_type: %.*s", curr_token->len, curr_token->str);
     type = find_defined_type(curr_token->str, curr_token->len);
     if (type == NULL) {
       return NULL;
@@ -882,7 +907,8 @@ Type *parse_type() {
     }
 
     // 読み捨てておく
-    assert(token_consume(TK_IDENT) != NULL);
+    Token *ident = token_consume(TK_IDENT);
+    assert(ident != NULL);
   }
 
   while (token_consume_punct("*")) {
@@ -1017,6 +1043,7 @@ Node *parse_stmt() {
   }
 
   if (token_consume(TK_IF) != NULL) {
+    __debug_self("TK_IF");
     token_expect_punct("(");
     Node *expr = parse_expr();
     token_expect_punct(")");
