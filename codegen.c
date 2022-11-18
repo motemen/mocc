@@ -305,7 +305,7 @@ static void codegen_expr(Node *node) {
     codegen_pop_t0();
 
     printf("  or t0, t0, t1\n");
-    printf("  andi t0, t0, 1\n");
+    printf("  snez t0, t0\n");
 
     codegen_push_t0();
     return;
@@ -317,8 +317,9 @@ static void codegen_expr(Node *node) {
     codegen_pop_t1();
     codegen_pop_t0();
 
+    printf("  snez t0, t0\n");
+    printf("  snez t1, t1\n");
     printf("  and t0, t0, t1\n");
-    printf("  andi t0, t0, 1\n");
 
     codegen_push_t0();
     return;
