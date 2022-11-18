@@ -1,6 +1,7 @@
 CFLAGS=-std=c11 -g -Werror -Wno-error=format -fprofile-instr-generate -fcoverage-mapping
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
+STAGE=1
 
 mocc: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
@@ -16,13 +17,13 @@ test: mocc
 clean:
 	rm -f mocc *.o *~ tmp* *.gcov *.gcda *.gcno
 
-self.out: mocc
-	./selfcompile.sh && riscv64-unknown-elf-gcc -static self/*.s -o self.out
+self.$(STAGE)/mocc: mocc
+	./selfcompile.sh && riscv64-unknown-elf-gcc -static self.$(STAGE)/*.s -o self.$(STAGE)/mocc
 
-selftest: self.out
-	spike "$(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./self.out test/test.c | perl -nle 'print unless $$.==1 && /^bbl loader\r$$/' > self/test.s
-	riscv64-$(RISCV_HOST)-gcc -static self/test.s test/helper.c -o self/test.out && \
-	prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./self/test.out
+selftest: self.$(STAGE)/mocc
+	spike "$(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" $< test/test.c | perl -nle 'print unless $$.==1 && /^bbl loader\r$$/' > self.$(STAGE)/test.s
+	riscv64-$(RISCV_HOST)-gcc -static self.$(STAGE)/test.s test/helper.c -o self.$(STAGE)/test && \
+	prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./self.$(STAGE)/test
 
 
 .PHONY: test clean

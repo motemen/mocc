@@ -1,3 +1,5 @@
+void putchar(char c);
+
 // 盤の状態
 int board[8][8];
 
@@ -28,8 +30,12 @@ int _check_board_by(int x, int y, int mark, int inc) {
   }
 }
 
-int check_board(int x, int y) { _check_board_by(x, y, 1, 1); }
-int uncheck_board(int x, int y) { _check_board_by(x, y, 0, -1); }
+int check_board(int x, int y) {
+  _check_board_by(x, y, 1, 1);
+}
+int uncheck_board(int x, int y) {
+  _check_board_by(x, y, 0, -1);
+}
 
 int print_board() {
   for (int y = 0; y < 8; y++) {
@@ -69,4 +75,6 @@ int solve(int x) {
   }
 }
 
-int main() { solve(0); }
+int main() {
+  solve(0);
+}
