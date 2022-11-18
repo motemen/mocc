@@ -1,5 +1,6 @@
 #!/bin/bash
 
+MOCC=${MOCC:-./mocc}
 riscv_cc=riscv64-$RISCV_HOST-gcc
 
 test_count=0
@@ -20,7 +21,7 @@ not_ok() {
 compile_program() {
   input="$1"
 
-  ./mocc - <<<"$input" > tmp.s || return $?
+  $MOCC - <<<"$input" > tmp.s || return $?
   $riscv_cc -static tmp.s test/helper.o -o tmp
 }
 
