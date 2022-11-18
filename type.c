@@ -6,6 +6,7 @@ Var globals;
 Var constants;
 String strings;
 Type defined_types;
+Func funcs;
 
 char *type_to_string(Type *type) {
   char *buf = calloc(80, sizeof(char));
@@ -65,11 +66,9 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
   for (Var *var = last->next; var; last = var, var = var->next) {
     if (var->scope_id == scope_id && var->len == len &&
         !strncmp(var->name, name, len)) {
-      if (var->is_extern || is_extern) {
-        if (is_extern == false) {
-          var->is_extern = false;
-        }
-        return var;
+      if (var->is_extern) {
+        // TODO: 型のチェックだけしたい
+        continue;
       }
 
       error("variable already defined: '%.*s'", len, name);

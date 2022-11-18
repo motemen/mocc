@@ -4,6 +4,10 @@
 
 int label_index = 0;
 
+Type int_type = {TY_INT};
+Type char_type = {TY_CHAR};
+Type void_type = {TY_VOID};
+
 char *node_kind_to_str(NodeKind kind) {
   switch (kind) {
   case ND_NUM:
@@ -83,6 +87,32 @@ char *node_kind_to_str(NodeKind kind) {
   }
 
   return "(unknown)";
+}
+
+Func *add_func(char *name, int len, Type *type) {
+  Func *last = &funcs;
+  for (Func *func = last->next; func; last = func, func = func->next) {
+    if (func->name_len == len && strncmp(func->name, name, len) == 0) {
+      // TODO: type とか引数があってることを確認するとか
+      return func;
+    }
+  }
+
+  Func *func = calloc(1, sizeof(Func));
+  func->name = name;
+  func->name_len = len;
+  func->type = type;
+  return last->next = func;
+}
+
+Func *find_func(char *name, int len) {
+  for (Func *func = funcs.next; func; func = func->next) {
+    if (func->name_len == len && strncmp(func->name, name, len) == 0) {
+      return func;
+    }
+  }
+
+  return NULL;
 }
 
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -246,6 +276,17 @@ static Node *parse_primary() {
       node->source_pos = tok->str;
       node->source_len = tok->len;
 
+      Func *func = find_func(tok->str, tok->len);
+      if (func == NULL) {
+        if (tok->len == 8 && strncmp(tok->str, "va_start", 8) == 0) {
+          node->type = &void_type;
+        } else {
+          error("function is not defined: %.*s", tok->len, tok->str);
+        }
+      } else {
+        node->type = func->type;
+      }
+
       if (token_consume_punct(")")) {
         // 引数ナシ
       } else {
@@ -323,9 +364,6 @@ static Node *parse_primary() {
   error("expected primary: () or ident or string or number");
 }
 
-Type int_type = {TY_INT};
-Type char_type = {TY_CHAR};
-
 static Type *new_type_ptr_to(Type *base) {
   Type *type = calloc(1, sizeof(Type));
   type->ty = TY_PTR;
@@ -384,8 +422,7 @@ Type *typeof_node(Node *node) {
     return &int_type;
 
   case ND_CALL:
-    // TODO: 関数の戻り値の型を返す
-    return &int_type;
+    return node->type;
 
   case ND_LVAR: {
     Type *type = node->lvar->type;
@@ -401,7 +438,9 @@ Type *typeof_node(Node *node) {
       return type->base;
     }
 
-    error_at(node->source_pos, "invalid dereference (or not implemented)");
+    error_at(node->source_pos,
+             "invalid dereference (or not implemented) for type (%s)",
+             type_to_string(type));
   }
 
   case ND_ADDR:
@@ -1254,11 +1293,13 @@ static Node *parse_decl() {
       node->args = head.next;
     }
 
+    add_func(ident->str, ident->len, type);
+
     Node *block = parse_block();
     if (!block) {
       // 関数の宣言のみ。
-      // XXX: 現状は何もしない
       token_expect_punct(";");
+
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_NOP;
       return node;

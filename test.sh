@@ -129,9 +129,9 @@ assert_compile_error "already defined" 'struct A { int a; }; struct A { int b; }
 assert_compile_error "not a valid type" 'void a;'
 assert_compile_error "must return value" 'int f() { return; }'
 
-assert_program_output "func1 called" "int main() { func1(); }"
-assert_program_output "func2 called 42 + 999 = 1041" "int main() { func2(42, 990+9); }"
-assert_program_output "func2 called 9 + 81 = 90" "int main() { int a; a = 9; func2(a, a*a); }"
+assert_program_output "func1 called" "void func1(); int main() { func1(); }"
+assert_program_output "func2 called 42 + 999 = 1041" "void func2(); int main() { func2(42, 990+9); }"
+assert_program_output "func2 called 9 + 81 = 90" "void func2(); int main() { int a; a = 9; func2(a, a*a); }"
 
 echo
 echo "1..$test_count"

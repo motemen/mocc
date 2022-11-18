@@ -4,6 +4,10 @@
 
 typedef char *va_list;
 
+int printf(char *fmt, ...);
+int strcmp(char *s1, char *s2);
+int vsnprintf(char *buf, int size, char *fmt, va_list ap);
+
 int test_count = 0;
 int fail_count = 0;
 
@@ -436,6 +440,14 @@ void test_global_var() {
   is(11111, ext_var, "extern int ext_var");
   is(98765, gvar_5.a, "struct Struct1 gvar_5 = {98765}; gvar_5.a");
   is(0, gvar_5.b, "struct Struct1 gvar_5 = {98765}; gvar_5.b");
+}
+
+struct Struct1 *f_ptr_struct() {
+  return &gvar_5;
+}
+
+void test_func_type() {
+  is(98765, f_ptr_struct()->a, "f_ptr_struct()->a");
 }
 
 int main() {

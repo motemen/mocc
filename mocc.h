@@ -46,6 +46,7 @@ typedef struct Token Token;
 typedef struct Type Type;
 typedef struct Var Var;
 typedef struct String String;
+typedef struct Func Func;
 
 typedef enum {
   ND_ADD,    // +
@@ -248,9 +249,18 @@ struct String {
   int index;
 };
 
+// 宣言された関数だ！
+struct Func {
+  Func *next;
+  char *name;
+  int name_len;
+  Type *type;
+};
+
 extern Var globals;
 extern Var constants;
 extern String strings;
+extern Func funcs;
 
 int sizeof_type(Type *type);
 Type *typeof_node(Node *node);
@@ -262,6 +272,9 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
 Var *find_var(Var *head, char *name, int len);
 
 String *add_string(char *str, int len);
+
+Func *add_func(char *name, int len, Type *type);
+Func *find_func(char *name, int len);
 
 Type *add_or_find_defined_type(Type *type);
 Type *find_defined_type(char *name, int len);

@@ -870,7 +870,7 @@ static bool codegen_node(Node *node) {
 
   case ND_GVARDECL: {
     if (node->gvar->is_extern) {
-      printf("  # extern %.*s", node->gvar->len, node->gvar->name);
+      printf("  # extern %.*s\n", node->gvar->len, node->gvar->name);
       return false;
     }
 
