@@ -3,6 +3,7 @@
 set -e
 
 CC=${CC-cc}
+MOCC=${MOCC-./mocc}
 
 rm -rf self
 mkdir self
@@ -13,6 +14,6 @@ for c in *.c; do
 done
 
 for c in self/*.c; do
-  echo ./mocc "$c" "> ${c%.c}.s"
-  ./mocc "$c" > ${c%.c}.s
+  echo $MOCC "$c" "> ${c%.c}.s"
+  $MOCC "$c" | perl -nle 'print unless $.==1 && /^bbl loader\r$/' > "${c%.c}.s"
 done

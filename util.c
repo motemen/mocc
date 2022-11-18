@@ -51,7 +51,7 @@ noreturn void error(char *fmt, ...) {
 }
 
 void __debug_self(char *fmt, ...) {
-#ifdef __mocc_self__
+#ifdef __mocc_self_debug__
   va_list ap;
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);

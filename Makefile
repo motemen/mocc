@@ -20,9 +20,9 @@ self.out: mocc
 	./selfcompile.sh && riscv64-unknown-elf-gcc -static self/*.s -o self.out
 
 selftest: self.out
-	spike "$(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./self.out test/test.c > self/test.s
+	spike "$(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./self.out test/test.c | perl -nle 'print unless $$.==1 && /^bbl loader\r$$/' > self/test.s
 	riscv64-$(RISCV_HOST)-gcc -static self/test.s test/helper.c -o self/test.out && \
-	prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./test.out
+	prove -v -e "spike $(RISCV)/riscv64-$(RISCV_HOST)/bin/pk" ./self/test.out
 
 
 .PHONY: test clean
