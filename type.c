@@ -87,8 +87,7 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
     if (last->type != NULL) {
       offset += sizeof_type(last->type);
     }
-    var->offset = sizeof_type(type) == 8 ? roundup_to_dword(offset)
-                                         : roundup_to_word(offset);
+    var->offset = roundup_to_dword(offset);
   } else {
     var->offset = offset + roundup_to_dword(sizeof_type(type));
   }

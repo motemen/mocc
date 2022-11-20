@@ -899,12 +899,17 @@ static bool codegen_node(Node *node) {
       } else if (node->gvar->type->ty == TY_STRUCT) {
         Var *member = node->gvar->type->members->next;
         for (NodeList *n = node->nodes; n; n = n->next) {
+          if (member == NULL) {
+            error("too many initializer for struct");
+          }
           switch (sizeof_type(member->type)) {
           case 1:
             printf("  .byte %d\n", n->node->val);
+            printf("  .zero 7\n");
             break;
           case 4:
             printf("  .word %d\n", n->node->val);
+            printf("  .zero 4\n");
             break;
           case 8:
             printf("  .dword %d\n", n->node->val);
@@ -918,9 +923,11 @@ static bool codegen_node(Node *node) {
           switch (sizeof_type(member->type)) {
           case 1:
             printf("  .byte 0\n");
+            printf("  .zero 7\n");
             break;
           case 4:
             printf("  .word 0\n");
+            printf("  .zero 4\n");
             break;
           case 8:
             printf("  .dword 0\n");

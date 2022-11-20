@@ -343,6 +343,8 @@ void test_struct() {
   s1.s = "foobar";
   is(98, s1.s[3], "s1.s = 'foobar'; s1.s[3]");
   is(100, sp->a, "sp->a");
+  is(100, s1.a, "s1.a");
+  is(&(s1.a), &(sp->a), "s1.a vs sp->a");
 
   char *p = s1.s;
   is(111, p[1], "p = s1.s; p[1]");
@@ -431,6 +433,21 @@ struct Struct1 gvar_5 = {98765};
 
 extern int ext_var;
 
+typedef enum TypeKind TypeKind;
+typedef struct Type Type;
+enum TypeKind {
+  TY_INT,
+  TY_VOID,
+};
+struct Type {
+  TypeKind ty;
+  Type *next;
+  int id;
+};
+
+Type int_type = {TY_INT};
+Type void_type = {TY_VOID, 0, 1};
+
 void test_global_var() {
   is(42, gvar_1, "gvar_1 = 42");
   is(-1, gvar_2, "gvar_2 = -1");
@@ -440,6 +457,11 @@ void test_global_var() {
   is(11111, ext_var, "extern int ext_var");
   is(98765, gvar_5.a, "struct Struct1 gvar_5 = {98765}; gvar_5.a");
   is(0, gvar_5.b, "struct Struct1 gvar_5 = {98765}; gvar_5.b");
+  is(TY_INT, int_type.ty, "int_type.ty");
+  is(0, int_type.next, "int_type.next");
+  is(TY_VOID, void_type.ty, "void_type.ty");
+  is(0, void_type.next, "void_type.next");
+  is(1, void_type.id, "void_type.id");
 }
 
 struct Struct1 *f_ptr_struct() {
