@@ -1147,12 +1147,13 @@ Node *parse_stmt() {
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
 
-    Scope *target_scope = scope_find(ND_WHILE);
-    if (!target_scope) {
-      target_scope = scope_find(ND_FOR);
-    }
-    if (!target_scope) {
-      target_scope = scope_find(ND_SWITCH);
+    Scope *target_scope = NULL;
+    for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+      if (scope->node->kind == ND_WHILE || scope->node->kind == ND_FOR ||
+          scope->node->kind == ND_SWITCH) {
+        target_scope = scope;
+        break;
+      }
     }
     if (!target_scope) {
       error("not in while, for or switch");
@@ -1170,9 +1171,12 @@ Node *parse_stmt() {
     node->source_pos = prev_token->str;
     node->source_len = prev_token->len;
 
-    Scope *target_scope = scope_find(ND_WHILE);
-    if (!target_scope) {
-      target_scope = scope_find(ND_FOR);
+    Scope *target_scope = NULL;
+    for (Scope *scope = curr_scope; scope; scope = scope->parent) {
+      if (scope->node->kind == ND_WHILE || scope->node->kind == ND_FOR) {
+        target_scope = scope;
+        break;
+      }
     }
     if (!target_scope) {
       error("not in while or for loop");

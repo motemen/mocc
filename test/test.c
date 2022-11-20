@@ -108,6 +108,16 @@ void test_switch() {
   default:
     ok(0, "switch 1");
   }
+
+  int i = 0;
+  for (; i < 10; i++) {
+    switch (i) {
+    case 5:
+      break;
+    }
+  }
+
+  is(10, i, "switch break");
 }
 
 int fact(int n) {
@@ -464,6 +474,7 @@ int main() {
   test_enum();
   test_typedef();
   test_varargs();
+  test_switch();
 
   printf("1..%d\n", test_count);
 
