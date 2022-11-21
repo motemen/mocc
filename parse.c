@@ -283,33 +283,19 @@ static Node *parse_primary() {
         node->type = func->type;
       }
 
-      __debug_self("args");
+      List *args = list_new();
       if (token_consume_punct(")")) {
         // 引数ナシ
       } else {
-        NodeList head = {};
-        NodeList *cur = &head;
-        while (true) {
-          NodeList *node_item = calloc(1, sizeof(NodeList));
-          node_item->node = parse_assign();
-          cur->next = node_item;
-          __debug_self("* args got: %.*s cur=%p cur->next=%p",
-                       node_item->node->source_len, node_item->node->source_pos,
-                       cur, cur->next);
-          cur = cur->next;
-          __debug_self("* args got: x");
-
+        for (;;) {
+          list_append(args, parse_assign());
           if (token_consume_punct(")")) {
             break;
           }
-
           token_expect_punct(",");
-          __debug_self(",");
         }
-
-        node->nodes = head.next;
       }
-      __debug_self("args: done");
+      node->nodes = args;
 
       return node;
     }
@@ -763,16 +749,12 @@ Node *parse_block() {
     // FIXME: 関数宣言の場合はスコープを作らないなどしたい (see test.sh)
     scope_push(node);
 
-    NodeList head = {};
-    NodeList *cur = &head;
+    List *stmts = list_new();
     while (!token_consume_punct("}")) {
-      NodeList *node_item = calloc(1, sizeof(NodeList));
-      node_item->node = parse_stmt();
-      cur->next = node_item;
-      cur = cur->next;
+      list_append(stmts, parse_stmt());
     }
 
-    node->nodes = head.next;
+    node->nodes = stmts;
 
     scope_pop();
 
@@ -911,29 +893,24 @@ Type *parse_type() {
 }
 
 // https://port70.net/~nsz/c/c11/n1570.html#6.7.9
-static NodeList *parse_initializer_list() {
+static List *parse_initializer_list() {
   if (token_consume_punct("{") == false) {
     return NULL;
   }
   if (token_consume_punct("}")) {
-    return calloc(1, sizeof(NodeList));
+    return list_new();
   }
 
-  NodeList head = {};
-  for (NodeList *cur = &head;;) {
-    NodeList *node_item = calloc(1, sizeof(NodeList));
-    node_item->node = parse_assign();
-    cur->next = node_item;
-    cur = cur->next;
-
+  List *inits = list_new();
+  for (;;) {
+    list_append(inits, parse_assign());
     if (token_consume_punct("}")) {
       break;
     }
-
     token_expect_punct(",");
   }
 
-  return head.next;
+  return inits;
 }
 
 static Node *parse_vardecl() {
@@ -963,9 +940,9 @@ static Node *parse_vardecl() {
   node->source_len = tok_var->len;
 
   if (token_consume_punct("=")) {
-    NodeList *init_list = parse_initializer_list();
-    if (init_list != NULL) {
-      node->nodes = init_list;
+    List *inits = parse_initializer_list();
+    if (inits != NULL) {
+      node->nodes = inits;
     } else {
       node->rhs = parse_expr();
     }
@@ -1264,17 +1241,15 @@ static Node *parse_decl() {
     node->kind = ND_FUNCDECL;
     node->type = type;
 
+    List *args = list_new();
     if (token_consume_punct(")")) {
       // 引数ナシ
     } else {
-      NodeList head = {};
-      NodeList *cur = &head;
-      while (true) {
+      for (;;) {
         if (token_consume_punct("...")) {
           // node_item->node == NULL だったら可変長引数ってことにしてしまおう
-          NodeList *node_item = calloc(1, sizeof(NodeList));
-          cur->next = node_item;
-          cur = cur->next;
+          // FIXME: ND_VARARGS とかにしたい
+          list_append(args, NULL);
           token_expect_punct(")");
           break;
         }
@@ -1297,10 +1272,7 @@ static Node *parse_decl() {
         ident->source_pos = tok->str;
         ident->source_len = tok->len;
 
-        NodeList *node_item = calloc(1, sizeof(NodeList));
-        node_item->node = ident;
-        cur->next = node_item;
-        cur = cur->next;
+        list_append(args, ident);
 
         if (token_consume_punct(")")) {
           break;
@@ -1308,9 +1280,9 @@ static Node *parse_decl() {
 
         token_expect_punct(",");
       }
-
-      node->args = head.next;
     }
+
+    node->args = args;
 
     Func *func = calloc(1, sizeof(Func));
     func->name = ident->str;
@@ -1355,13 +1327,9 @@ static Node *parse_decl() {
       } else {
         // ここは ND_CALL とよく似てるので parse_expr_list
         // とかにできるとよさそう
-        NodeList head = {};
-        NodeList *cur = &head;
+        List *inits = list_new();
         while (true) {
-          NodeList *node_item = calloc(1, sizeof(NodeList));
-          node_item->node = new_node_num(compute_const_expr(parse_assign()));
-          cur->next = node_item;
-          cur = cur->next;
+          list_append(inits, new_node_num(compute_const_expr(parse_assign())));
 
           if (token_consume_punct("}")) {
             break;
@@ -1370,7 +1338,7 @@ static Node *parse_decl() {
           token_expect_punct(",");
         }
 
-        node->nodes = head.next;
+        node->nodes = inits;
       }
     } else {
       node->rhs = new_node_num(compute_const_expr(parse_expr()));

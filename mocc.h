@@ -80,7 +80,7 @@ extern char *input_filename;
 
 void codegen();
 
-typedef struct NodeList NodeList;
+typedef struct List List;
 typedef struct Node Node;
 typedef struct Token Token;
 typedef struct Type Type;
@@ -141,11 +141,11 @@ struct Node {
   // ND_FUNCDECL のとき: args = ident, ...
   // ND_GVARDECL のときは initializer = { expr, ... } （rhs == NULL
   // のときにかぎる）
-  NodeList *nodes;
+  List *nodes; // of Node *
 
   // あとで locals とかにしたいかも？？
   // すくなくとも LVar *にしたい気がする
-  NodeList *args;
+  List *args; // of Node *
 
   // ND_CALL, ND_FUNCDECL のときだけ。関数名
   // そのうち関数の使用に宣言が必要になったら
@@ -167,14 +167,6 @@ struct Node {
 
   char *source_pos; // デバッグ用
   int source_len;   // デバッグ用
-};
-
-// ND_FUNCDECL の仮引数
-// ND_CALL の実引数
-// ND_BLOCK の stmt*
-struct NodeList {
-  Node *node;
-  NodeList *next;
 };
 
 typedef struct Scope Scope;
@@ -306,17 +298,12 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
              int scope_id);
 Var *find_var(Var *head, char *name, int len);
 
-Func *add_func(char *name, int len, Type *type);
-Func *find_func(char *name, int len);
-
 Type *add_or_find_defined_type(Type *type);
 Type *find_defined_type(char *name, int len);
 
 noreturn void error(char *fmt, ...) __attribute__((format(printf, 1, 2)));
 noreturn void error_at(char *loc, char *fmt, ...)
     __attribute__((format(printf, 2, 3)));
-
-typedef struct List List;
 
 struct List {
   int len;

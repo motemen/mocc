@@ -46,12 +46,14 @@ static int func_locals_offset(Node *func) {
 }
 
 static int curr_varargs_index() {
-  int varargs_index = 0;
-  for (NodeList *args = curr_func->args; args; args = args->next) {
-    if (args->node == NULL) {
-      return varargs_index;
+  if (curr_func->args == NULL)
+    return -1;
+
+  for (int i = 0; i < curr_func->args->len; i++) {
+    Node *node = curr_func->args->data[i];
+    if (node == NULL) { // FIXME ND_VARARGS とかにしたい
+      return i;
     }
-    varargs_index++;
   }
 
   return -1;
@@ -414,14 +416,14 @@ static void codegen_expr(Node *node) {
     if (node->ident->len == 8 &&
         strncmp("va_start", node->ident->str, node->ident->len) == 0) {
       // 最初の引数 ap だけ渡す。一般化できるといいけどとりあえず。
-      codegen_builtin_va_start(node->nodes->node);
+      codegen_builtin_va_start(node->nodes->data[0]);
       codegen_push_t0();
       return;
     }
 
     int arg_count = 0;
-    for (NodeList *n = node->nodes; n; n = n->next) {
-      codegen_expr(n->node);
+    for (int i = 0; i < node->nodes->len; i++) {
+      codegen_expr(node->nodes->data[i]);
       arg_count++;
     }
 
@@ -652,19 +654,17 @@ static void codegen_builtin_va_start(Node *ap) {
   printf("  sd t1, 0(t0)\n");
 }
 
-static void codegen_init_struct_var(Node *node_var, Type *type,
-                                    NodeList *init) {
+static void codegen_init_struct_var(Node *node_var, Type *type, List *inits) {
   Var *member = type->members->next;
-  for (NodeList *item = init; item; item = item->next) {
-    if (item->node == NULL) {
-      break;
-    }
+  for (int i = 0; i < inits->len; i++) {
+    Node *node = inits->data[i];
+
     Node *mem = new_node(ND_MEMBER, node_var, NULL);
     mem->ident = calloc(1, sizeof(Token));
     mem->ident->str = member->name;
     mem->ident->len = member->len;
 
-    Node *assign = new_node(ND_ASSIGN, mem, item->node);
+    Node *assign = new_node(ND_ASSIGN, mem, node);
     codegen_expr(assign);
     codegen_pop_discard();
 
@@ -759,12 +759,13 @@ static bool codegen_node(Node *node) {
 
     // FIXME 直下が ND_BLOCK である前提だしネストしてたらうまくいかない
     Node *node_default = NULL;
-    for (NodeList *n = node->rhs->nodes; n; n = n->next) {
-      if (n->node->kind == ND_CASE) {
-        printf("  li t1, %d\n", n->node->val);
-        printf("  beq t0, t1, .Lcase%03d\n", n->node->label_index);
-      } else if (n->node->kind == ND_DEFAULT) {
-        node_default = n->node;
+    for (int i = 0; i < node->rhs->nodes->len; i++) {
+      Node *stmt = node->rhs->nodes->data[i];
+      if (stmt->kind == ND_CASE) {
+        printf("  li t1, %d\n", stmt->val);
+        printf("  beq t0, t1, .Lcase%03d\n", stmt->label_index);
+      } else if (stmt->kind == ND_DEFAULT) {
+        node_default = stmt;
       }
     }
     if (node_default) {
@@ -835,8 +836,8 @@ static bool codegen_node(Node *node) {
 
   case ND_BLOCK:
     // scope の対応がいるかもね
-    for (NodeList *n = node->nodes; n; n = n->next) {
-      if (codegen_node(n->node))
+    for (int i = 0; i < node->nodes->len; i++) {
+      if (codegen_node(node->nodes->data[i]))
         codegen_pop_discard();
     }
 
@@ -851,24 +852,23 @@ static bool codegen_node(Node *node) {
     curr_func = node;
     codegen_prologue();
 
-    int arg_count = 0;
-    for (NodeList *a = node->args; a; a = a->next) {
-      if (a->node == NULL) {
+    for (int i = 0; i < node->args->len; i++) {
+      Node *arg = node->args->data[i];
+      if (arg == NULL) {
         // これは vararg なのでオワリ
         printf("  # vararg\n");
         break;
       }
 
       // a0 を lvar xyz に代入するみたいなことをする
-      printf("  # assign to argument '%.*s'\n", a->node->source_len,
-             a->node->source_pos);
-      printf("  sd a%d, -%d(fp)\n", arg_count, a->node->lvar->offset);
-
-      arg_count++;
+      printf("  # assign to argument '%.*s'\n", arg->source_len,
+             arg->source_pos);
+      printf("  sd a%d, -%d(fp)\n", i, arg->lvar->offset);
     }
 
-    for (NodeList *n = node->nodes; n; n = n->next) {
-      if (codegen_node(n->node))
+    for (int i = 0; i < node->nodes->len; i++) {
+      Node *stmt = node->nodes->data[i];
+      if (codegen_node(stmt))
         codegen_pop_t0();
     }
 
@@ -921,8 +921,9 @@ static bool codegen_node(Node *node) {
     } else if (node->nodes != NULL) {
       if (node->gvar->type->ty == TY_ARRAY) {
         int len = node->gvar->type->array_size;
-        for (NodeList *n = node->nodes; n; n = n->next) {
-          printf("  .word %d\n", n->node->val);
+        for (int i = 0; i < node->nodes->len; i++) {
+          Node *init = node->nodes->data[i];
+          printf("  .word %d\n", init->val);
           if (--len < 0) {
             error("too many elements in array initializer");
           }
@@ -932,16 +933,17 @@ static bool codegen_node(Node *node) {
         }
       } else if (node->gvar->type->ty == TY_STRUCT) {
         Var *member = node->gvar->type->members->next;
-        for (NodeList *n = node->nodes; n; n = n->next) {
+        for (int i = 0; i < node->nodes->len; i++) {
+          Node *init = node->nodes->data[i];
           switch (sizeof_type(member->type)) {
           case 1:
-            printf("  .byte %d\n", n->node->val);
+            printf("  .byte %d\n", init->val);
             break;
           case 4:
-            printf("  .word %d\n", n->node->val);
+            printf("  .word %d\n", init->val);
             break;
           case 8:
-            printf("  .dword %d\n", n->node->val);
+            printf("  .dword %d\n", init->val);
             break;
           default:
             error("unsupported member type (%s)", type_to_string(member->type));
