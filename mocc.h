@@ -289,7 +289,6 @@ struct String {
 
 // 宣言された関数だ！
 struct Func {
-  Func *next;
   char *name;
   int name_len;
   Type *type;
@@ -297,7 +296,6 @@ struct Func {
 
 extern Var globals;
 extern Var constants;
-extern Func funcs;
 
 int sizeof_type(Type *type);
 Type *typeof_node(Node *node);
@@ -331,3 +329,4 @@ int list_append(List *list, void *data);
 
 extern List *code;    // of Node *
 extern List *strings; // of String *
+extern List *funcs;   // of Func *

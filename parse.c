@@ -89,32 +89,6 @@ char *node_kind_to_str(NodeKind kind) {
   return "(unknown)";
 }
 
-Func *add_func(char *name, int len, Type *type) {
-  Func *last = &funcs;
-  for (Func *func = last->next; func; last = func, func = func->next) {
-    if (func->name_len == len && strncmp(func->name, name, len) == 0) {
-      // TODO: type とか引数があってることを確認するとか
-      return func;
-    }
-  }
-
-  Func *func = calloc(1, sizeof(Func));
-  func->name = name;
-  func->name_len = len;
-  func->type = type;
-  return last->next = func;
-}
-
-Func *find_func(char *name, int len) {
-  for (Func *func = funcs.next; func; func = func->next) {
-    if (func->name_len == len && strncmp(func->name, name, len) == 0) {
-      return func;
-    }
-  }
-
-  return NULL;
-}
-
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
@@ -289,7 +263,16 @@ static Node *parse_primary() {
       node->source_len = tok->len;
 
       __debug_self("ND_CALL");
-      Func *func = find_func(tok->str, tok->len);
+      Func *func = NULL;
+      for (int i = 0; i < funcs->len; i++) {
+        Func *f = funcs->data[i];
+        if (f->name_len == tok->len &&
+            strncmp(f->name, tok->str, tok->len) == 0) {
+          func = f;
+          break;
+        }
+      }
+
       if (func == NULL) {
         if (tok->len == 8 && strncmp(tok->str, "va_start", 8) == 0) {
           node->type = &void_type;
@@ -1329,7 +1312,12 @@ static Node *parse_decl() {
       node->args = head.next;
     }
 
-    add_func(ident->str, ident->len, type);
+    Func *func = calloc(1, sizeof(Func));
+    func->name = ident->str;
+    func->name_len = ident->len;
+    func->type = type;
+
+    list_append(funcs, func);
 
     Node *block = parse_block();
     if (!block) {
@@ -1399,10 +1387,12 @@ static Node *parse_decl() {
 
 List *code;
 List *strings;
+List *funcs;
 
 void parse_program() {
   code = list_new();
   strings = list_new();
+  funcs = list_new();
 
   while (!token_at_eof()) {
     list_append(code, parse_decl());

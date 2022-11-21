@@ -5,7 +5,6 @@
 Var globals;
 Var constants;
 Type defined_types;
-Func funcs;
 
 char *type_to_string(Type *type) {
   char *buf = calloc(80, sizeof(char));
