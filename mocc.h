@@ -283,10 +283,8 @@ struct Var {
 
 // 文字列リテラル!!!
 struct String {
-  String *next;
   char *str;
   int len;
-  int index;
 };
 
 // 宣言された関数だ！
@@ -299,7 +297,6 @@ struct Func {
 
 extern Var globals;
 extern Var constants;
-extern String strings;
 extern Func funcs;
 
 int sizeof_type(Type *type);
@@ -310,8 +307,6 @@ char *type_to_string(Type *type);
 Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
              int scope_id);
 Var *find_var(Var *head, char *name, int len);
-
-String *add_string(char *str, int len);
 
 Func *add_func(char *name, int len, Type *type);
 Func *find_func(char *name, int len);
@@ -332,6 +327,7 @@ struct List {
 };
 
 List *list_new();
-void list_append(List *list, void *data);
+int list_append(List *list, void *data);
 
-extern List *code;
+extern List *code;    // of Node *
+extern List *strings; // of String *

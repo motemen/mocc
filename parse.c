@@ -367,10 +367,15 @@ static Node *parse_primary() {
 
   Token *tok_str = token_consume(TK_STRING);
   if (tok_str) {
-    String *str_lit = add_string(tok_str->str, tok_str->len);
+    String *str = calloc(1, sizeof(String));
+    str->str = tok_str->str;
+    str->len = tok_str->len;
+
+    int n = list_append(strings, str);
+
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_STRING;
-    node->val = str_lit->index;
+    node->val = n;
     node->source_pos = tok_str->str;
     node->source_len = tok_str->len;
     return node;
@@ -1393,9 +1398,12 @@ static Node *parse_decl() {
 }
 
 List *code;
+List *strings;
 
 void parse_program() {
   code = list_new();
+  strings = list_new();
+
   while (!token_at_eof()) {
     list_append(code, parse_decl());
   }

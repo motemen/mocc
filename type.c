@@ -4,7 +4,6 @@
 
 Var globals;
 Var constants;
-String strings;
 Type defined_types;
 Func funcs;
 
@@ -97,24 +96,6 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
   last->next = var;
 
   return var;
-}
-
-String *add_string(char *str, int len) {
-  int index = 0;
-  String *last = &strings;
-  for (String *lit = last->next; lit; last = lit, lit = lit->next) {
-    if (lit->len == len && !strncmp(lit->str, str, len)) {
-      return lit;
-    }
-    index++;
-  }
-
-  String *lit = calloc(1, sizeof(String));
-  lit->str = str;
-  lit->len = len;
-  lit->index = index;
-
-  return last->next = lit;
 }
 
 Type *find_defined_type(char *name, int len) {

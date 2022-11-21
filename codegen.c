@@ -627,9 +627,10 @@ static void codegen_expr(Node *node) {
 
 static void codegen_preamble() {
   printf("  .section .rodata\n");
-  for (String *lit = strings.next; lit; lit = lit->next) {
-    printf(".LC%d:\n", lit->index);
-    printf("  .string \"%.*s\"\n", lit->len, lit->str);
+  for (int i = 0; i < strings->len; i++) {
+    String *str = strings->data[i];
+    printf(".LC%d:\n", i);
+    printf("  .string \"%.*s\"\n", str->len, str->str);
   }
 
   printf("\n");

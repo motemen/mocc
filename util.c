@@ -64,10 +64,11 @@ List *list_new() {
   return list;
 }
 
-void list_append(List *list, void *data) {
+int list_append(List *list, void *data) {
   if (list->len == list->cap) {
     list->cap = list->cap ? list->cap * 2 : 16;
     list->data = realloc(list->data, sizeof(void *) * list->cap);
   }
   list->data[list->len++] = data;
+  return list->len - 1;
 }
