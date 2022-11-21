@@ -2,10 +2,10 @@ ARG VARIANT="jammy"
 FROM mcr.microsoft.com/vscode/devcontainers/base:0-${VARIANT}
 
 RUN apt-get update && \
-    apt-get install -y autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev libusb-1.0-0-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev device-tree-compiler pkg-config libexpat-dev
+    apt-get install -y autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev libusb-1.0-0-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev device-tree-compiler pkg-config libexpat-dev libnewlib-dev
 
 ENV RISCV /opt/riscv
-ENV RISCV_HOST unknown-linux-gnu
+ENV RISCV_HOST unknown-elf
 ENV PATH $RISCV/bin:$PATH
 
 WORKDIR /opt/src
@@ -17,7 +17,7 @@ RUN git clone --depth=1 https://github.com/riscv-collab/riscv-gnu-toolchain.git 
 
 RUN cd riscv-gnu-toolchain && \
     ./configure --prefix=$RISCV && \
-    make -j $(nproc) linux
+    make -j $(nproc)
 
 RUN git clone --depth 1 https://github.com/riscv-software-src/riscv-isa-sim.git && \
     cd riscv-isa-sim && \
@@ -37,4 +37,7 @@ RUN git clone --depth=1 https://github.com/riscv-software-src/riscv-pk.git && \
 
 RUN cd .. && rm -rf src
 
-RUN apt-get install -y clangd-12 && update-alternatives --install /usr/bin/clangd clangd /usr/bin/clangd-12 100
+RUN apt-get update && \
+    apt-get install -y clang-12 clangd-12 && \
+    update-alternatives --install /usr/bin/clangd clangd /usr/bin/clangd-12 100 && \
+    update-alternatives --install /usr/bin/cc cc /usr/bin/clang-12 100
