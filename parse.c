@@ -1392,15 +1392,13 @@ static Node *parse_decl() {
   return node;
 }
 
-Node *code[10000]; // FIXME
+List *code;
 
 void parse_program() {
-  int i = 0;
+  code = list_new();
   while (!token_at_eof()) {
-    __debug_self("parse_program: %d", i);
-    code[i++] = parse_decl();
+    list_append(code, parse_decl());
   }
-  code[i] = NULL;
 
   if (curr_token != NULL && curr_token->kind != TK_EOF) {
     error("not all tokens are consumed");

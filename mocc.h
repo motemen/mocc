@@ -187,7 +187,6 @@ struct Scope {
 };
 
 void parse_program();
-extern Node *code[10000];
 char *node_kind_to_str(NodeKind kind);
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs);
 char *type_to_str(Type *type);
@@ -323,3 +322,16 @@ Type *find_defined_type(char *name, int len);
 noreturn void error(char *fmt, ...) __attribute__((format(printf, 1, 2)));
 noreturn void error_at(char *loc, char *fmt, ...)
     __attribute__((format(printf, 2, 3)));
+
+typedef struct List List;
+
+struct List {
+  int len;
+  int cap;
+  void **data;
+};
+
+List *list_new();
+void list_append(List *list, void *data);
+
+extern List *code;

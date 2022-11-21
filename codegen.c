@@ -1001,8 +1001,8 @@ static bool codegen_node(Node *node) {
 void codegen() {
   codegen_preamble();
 
-  for (int i = 0; code[i]; i++) {
-    if (codegen_node(code[i]))
+  for (int i = 0; i < code->len; i++) {
+    if (codegen_node(code->data[i]))
       codegen_pop_t0();
   }
 }

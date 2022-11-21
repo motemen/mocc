@@ -58,3 +58,16 @@ void __debug_self(char *fmt, ...) {
   fprintf(stderr, "\n");
 #endif
 }
+
+List *list_new() {
+  List *list = calloc(1, sizeof(List));
+  return list;
+}
+
+void list_append(List *list, void *data) {
+  if (list->len == list->cap) {
+    list->cap = list->cap ? list->cap * 2 : 16;
+    list->data = realloc(list->data, sizeof(void *) * list->cap);
+  }
+  list->data[list->len++] = data;
+}
