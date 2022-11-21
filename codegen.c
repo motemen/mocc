@@ -211,7 +211,7 @@ static void codegen_expr(Node *node) {
     codegen_expr(node->lhs); // -> t0
     codegen_expr(node->rhs); // -> t1
 
-    printf("  # pointer arithmetic: ltype=(%s), rtype=(%s)",
+    printf("  # pointer arithmetic: ltype=(%s), rtype=(%s)\n",
            type_to_string(ltype), type_to_string(rtype));
 
     if (lptr_size > 1) {
@@ -329,8 +329,11 @@ static void codegen_expr(Node *node) {
       // 配列の場合は先頭要素へのポインタに変換されるのでアドレスを push
       // sizeof, & の場合だけ例外だがそれはそちら側で処理されてる。はず。
       // ここ add でも通ってたけどいいのか？？
+      printf("  # lvar (array) '%.*s'\n", node->lvar->len, node->lvar->name);
       printf("  addi t0, fp, -%d\n", node->lvar->offset);
     } else {
+      printf("  # lvar '%.*s'\n", node->lvar->len, node->lvar->name);
+
       int size = sizeof_type(node->lvar->type);
 
       switch (size) {
@@ -343,7 +346,6 @@ static void codegen_expr(Node *node) {
       case 8:
         printf("  ld t0, -%d(fp)\n", node->lvar->offset);
         break;
-
       default:
         error("unknown size of lvar: (%s)",
               type_to_string(typeof_node(node->lhs)));
@@ -556,9 +558,40 @@ static void codegen_expr(Node *node) {
   case ND_POSTINC:
     codegen_push_lvalue(node->lhs);
     codegen_pop_t1();
-    printf("  ld t0, 0(t1)\n");
+
+    // FIXME ND_LVAR といっしょ！
+    switch (sizeof_type(typeof_node(node->lhs))) {
+    case 1:
+      printf("  lb t0, 0(t1)\n");
+      break;
+    case 4:
+      printf("  lw t0, 0(t1)\n");
+      break;
+    case 8:
+      printf("  ld t0, 0(t1)\n");
+      break;
+    default:
+      error("unknown size of lvar: (%s)",
+            type_to_string(typeof_node(node->lhs)));
+    }
+
     printf("  addi t2, t0, %d\n", node->val);
-    printf("  sd t2, 0(t1)\n");
+
+    switch (sizeof_type(typeof_node(node->lhs))) {
+    case 1:
+      printf("  sb t2, 0(t1)\n");
+      break;
+    case 4:
+      printf("  sw t2, 0(t1)\n");
+      break;
+    case 8:
+      printf("  sd t2, 0(t1)\n");
+      break;
+    default:
+      error("unknown size of lvar: (%s)",
+            type_to_string(typeof_node(node->lhs)));
+    }
+
     codegen_push_t0();
 
     return;
