@@ -123,6 +123,8 @@ static int scope_offset(Scope *scope) {
 }
 
 static void scope_create(Node *node) {
+  node->locals = calloc(1, sizeof(Var));
+
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
   scope->id = ++scope_id;
@@ -1120,6 +1122,8 @@ Node *parse_stmt() {
   return node;
 }
 
+static bool _parse_decl_func(Node *node, Type *type);
+
 static Node *parse_decl() {
   bool is_extern = token_consume(TK_EXTERN) != NULL;
 
@@ -1152,6 +1156,7 @@ static Node *parse_decl() {
     // FIXME: add_defined_type のほうがいい
     type->name = ident->str;
     type->name_len = ident->len;
+
     add_or_find_defined_type(type);
     Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NOP;
@@ -1163,79 +1168,7 @@ static Node *parse_decl() {
   node->source_pos = ident->str;
   node->source_len = ident->len;
 
-  // FIXME: これ ND_FUNCDECL のブランチにいれるべきでは
-  node->locals = calloc(1, sizeof(Var));
-
-  scope_create(node);
-
-  if (token_consume_punct("(")) {
-    node->kind = ND_FUNCDECL;
-    node->type = type;
-
-    List *args = list_new();
-    if (token_consume_punct(")")) {
-      // 引数ナシ
-    } else {
-      for (;;) {
-        if (token_consume_punct("...")) {
-          Node *node = calloc(1, sizeof(Node));
-          node->kind = ND_VARARGS;
-          list_append(args, node);
-          token_expect_punct(")");
-          break;
-        }
-
-        Type *type = parse_type();
-        if (!type) {
-          error("expected argument type");
-        }
-
-        Token *tok = token_consume(TK_IDENT);
-        if (!tok) {
-          error("expected argument name");
-        }
-
-        Node *ident = calloc(1, sizeof(Node));
-        ident->kind = ND_LVAR;
-        Var *lvar = add_var(curr_scope->node->locals, tok->str, tok->len, type,
-                            false, curr_scope->id);
-        ident->lvar = lvar;
-        ident->source_pos = tok->str;
-        ident->source_len = tok->len;
-
-        list_append(args, ident);
-
-        if (token_consume_punct(")")) {
-          break;
-        }
-
-        token_expect_punct(",");
-      }
-    }
-
-    node->args = args;
-
-    Func *func = calloc(1, sizeof(Func));
-    func->name = ident->str;
-    func->name_len = ident->len;
-    func->type = type;
-
-    list_append(funcs, func);
-
-    Node *block = parse_block();
-    if (!block) {
-      // 関数の宣言のみ。
-      token_expect_punct(";");
-
-      Node *node = calloc(1, sizeof(Node));
-      node->kind = ND_NOP;
-      return node;
-    }
-
-    node->nodes = block->nodes;
-
-    curr_scope = NULL;
-
+  if (_parse_decl_func(node, type)) {
     return node;
   }
 
@@ -1282,6 +1215,82 @@ static Node *parse_decl() {
   node->gvar = gvar;
 
   return node;
+}
+
+static bool _parse_decl_func(Node *node, Type *type) {
+  if (token_consume_punct("(") == false) {
+    return false;
+  }
+
+  scope_create(node);
+
+  node->kind = ND_FUNCDECL;
+  node->type = type;
+
+  List *args = list_new();
+  if (token_consume_punct(")")) {
+    // 引数ナシ
+  } else {
+    for (;;) {
+      if (token_consume_punct("...")) {
+        Node *node = calloc(1, sizeof(Node));
+        node->kind = ND_VARARGS;
+        list_append(args, node);
+        token_expect_punct(")");
+        break;
+      }
+
+      Type *type = parse_type();
+      if (!type) {
+        error("expected argument type");
+      }
+
+      Token *tok = token_consume(TK_IDENT);
+      if (!tok) {
+        error("expected argument name");
+      }
+
+      Node *ident = calloc(1, sizeof(Node));
+      ident->kind = ND_LVAR;
+      Var *lvar = add_var(curr_scope->node->locals, tok->str, tok->len, type,
+                          false, curr_scope->id);
+      ident->lvar = lvar;
+      ident->source_pos = tok->str;
+      ident->source_len = tok->len;
+
+      list_append(args, ident);
+
+      if (token_consume_punct(")")) {
+        break;
+      }
+
+      token_expect_punct(",");
+    }
+  }
+
+  node->args = args;
+
+  Func *func = calloc(1, sizeof(Func));
+  func->name = node->ident->str;
+  func->name_len = node->ident->len;
+  func->type = type;
+
+  list_append(funcs, func);
+
+  Node *block = parse_block();
+  if (!block) {
+    // 関数の宣言のみ。
+    token_expect_punct(";");
+
+    node->kind = ND_NOP;
+    return true;
+  }
+
+  node->nodes = block->nodes;
+
+  curr_scope = NULL;
+
+  return true;
 }
 
 List *code;
