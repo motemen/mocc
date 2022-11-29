@@ -89,44 +89,9 @@ typedef struct String String;
 typedef struct Func Func;
 
 typedef enum {
-  ND_ADD,    // +
-  ND_SUB,    // -
-  ND_MUL,    // *
-  ND_DIV,    // /
-  ND_EQ,     // ==
-  ND_NE,     // !=
-  ND_LT,     // <
-  ND_GE,     // >=
-  ND_LOGOR,  // ||
-  ND_LOGAND, // &&
-  ND_LVAR,
-  ND_ASSIGN, // =
-  ND_COND,   // ?:
-  ND_NUM,    // numbers
-  ND_RETURN,
-  ND_IF,
-  ND_SWITCH,
-  ND_WHILE,
-  ND_FOR,
-  ND_BLOCK,
-  ND_CALL,
-  ND_FUNCDECL,
-  ND_DEREF,   // unary *
-  ND_ADDR,    // unary &
-  ND_NOT,     // !
-  ND_VARDECL, //
-  ND_GVARDECL,
-  ND_GVAR,
-  ND_STRING,
-  ND_BREAK,
-  ND_CONTINUE,
-  ND_CASE,
-  ND_DEFAULT,
-  ND_NOP,
-  ND_MEMBER,
-  ND_POSTINC,
-  ND_COMMA,
-  ND_VARARGS, // ...
+#define NODE_KIND(k) k,
+#include "node_kind.def"
+#undef NODE_KIND
 } NodeKind;
 
 struct Node {
