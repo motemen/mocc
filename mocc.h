@@ -221,7 +221,7 @@ struct Type {
   int name_len; // name の長さ
 };
 
-extern Type defined_types;
+extern List *defined_types; // of Type *
 
 // ローカル変数、構造体メンバ、グローバル変数
 struct Var {

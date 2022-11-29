@@ -4,7 +4,7 @@
 
 Var globals;
 Var constants;
-Type defined_types;
+List *defined_types;
 
 char *type_to_string(Type *type) {
   char *buf = calloc(80, sizeof(char));
@@ -98,8 +98,8 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
 }
 
 Type *find_defined_type(char *name, int len) {
-  Type *last = &defined_types;
-  for (Type *type = last->next; type; type = type->next) {
+  for (int i = 0; i < defined_types->len; i++) {
+    Type *type = defined_types->data[i];
     if (type->name_len == len && strncmp(type->name, name, len) == 0 &&
         type->ty == TY_TYPEDEF) {
       return type;
@@ -117,8 +117,8 @@ Type *add_or_find_defined_type(Type *type) {
     error("unnamed type: (%s)", type_to_string(type));
   }
 
-  Type *last = &defined_types;
-  for (Type *it = last->next; it; last = it, it = it->next) {
+  for (int i = 0; i < defined_types->len; i++) {
+    Type *it = defined_types->data[i];
     if (it->name_len == type->name_len &&
         strncmp(it->name, type->name, type->name_len) == 0 &&
         it->ty == type->ty) {
@@ -132,7 +132,9 @@ Type *add_or_find_defined_type(Type *type) {
     }
   }
 
-  return last->next = type;
+  list_append(defined_types, type);
+
+  return type;
 }
 
 Var *find_member(Node *node) {

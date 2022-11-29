@@ -1301,6 +1301,7 @@ void parse_program() {
   code = list_new();
   strings = list_new();
   funcs = list_new();
+  defined_types = list_new();
 
   while (!token_at_eof()) {
     list_append(code, parse_decl());
