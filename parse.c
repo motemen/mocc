@@ -84,6 +84,8 @@ char *node_kind_to_str(NodeKind kind) {
     return "ND_POSTINC";
   case ND_COMMA:
     return "ND_COMMA";
+  case ND_VARARGS:
+    return "ND_VARARGS";
   }
 
   return "(unknown)";
@@ -1247,9 +1249,9 @@ static Node *parse_decl() {
     } else {
       for (;;) {
         if (token_consume_punct("...")) {
-          // node_item->node == NULL だったら可変長引数ってことにしてしまおう
-          // FIXME: ND_VARARGS とかにしたい
-          list_append(args, NULL);
+          Node *node = calloc(1, sizeof(Node));
+          node->kind = ND_VARARGS;
+          list_append(args, node);
           token_expect_punct(")");
           break;
         }

@@ -51,7 +51,7 @@ static int curr_varargs_index() {
 
   for (int i = 0; i < curr_func->args->len; i++) {
     Node *node = curr_func->args->data[i];
-    if (node == NULL) { // FIXME ND_VARARGS とかにしたい
+    if (node->kind == ND_VARARGS) {
       return i;
     }
   }
@@ -617,6 +617,7 @@ static void codegen_expr(Node *node) {
   case ND_CONTINUE:
   case ND_CASE:
   case ND_DEFAULT:
+  case ND_VARARGS:
     break;
 
   case ND_NOP:
@@ -854,7 +855,7 @@ static bool codegen_node(Node *node) {
 
     for (int i = 0; i < node->args->len; i++) {
       Node *arg = node->args->data[i];
-      if (arg == NULL) {
+      if (arg->kind == ND_VARARGS) {
         // これは vararg なのでオワリ
         printf("  # vararg\n");
         break;
@@ -993,6 +994,7 @@ static bool codegen_node(Node *node) {
     printf(".Ldefault%03d:\n", node->label_index);
     return false;
 
+  case ND_VARARGS:
   case ND_NOP:
     return false;
   }

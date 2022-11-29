@@ -126,6 +126,7 @@ typedef enum {
   ND_MEMBER,
   ND_POSTINC,
   ND_COMMA,
+  ND_VARARGS, // ...
 } NodeKind;
 
 struct Node {
