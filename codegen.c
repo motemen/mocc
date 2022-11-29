@@ -37,12 +37,13 @@ Node *curr_func;
 
 static int func_locals_offset(Node *func) {
   assert(func->kind == ND_FUNCDECL);
-  int max = func->locals->offset;
-  for (Var *var = func->locals->next; var; var = var->next) {
-    // 常にあとのほうが offset でかいはずなのでこれでよい
-    max = var->offset;
+
+  if (func->locals->len == 0) {
+    return 0;
   }
-  return max;
+
+  Var *last = func->locals->data[func->locals->len - 1];
+  return last->offset;
 }
 
 static int curr_varargs_index() {
@@ -656,8 +657,10 @@ static void codegen_builtin_va_start(Node *ap) {
 }
 
 static void codegen_init_struct_var(Node *node_var, Type *type, List *inits) {
-  Var *member = type->members->next;
-  for (int i = 0; i < inits->len; i++) {
+  int i;
+  for (i = 0; i < inits->len; i++) {
+    Var *member = type->members->data[i];
+
     Node *node = inits->data[i];
 
     Node *mem = new_node(ND_MEMBER, node_var, NULL);
@@ -668,11 +671,11 @@ static void codegen_init_struct_var(Node *node_var, Type *type, List *inits) {
     Node *assign = new_node(ND_ASSIGN, mem, node);
     codegen_expr(assign);
     codegen_pop_discard();
-
-    member = member->next;
   }
 
-  for (; member; member = member->next) {
+  for (; i < type->members->len; i++) {
+    Var *member = type->members->data[i];
+
     // ここで初期化されていないメンバーは 0 で初期化する
     Node *node_mem = new_node(ND_MEMBER, node_var, NULL);
     node_mem->ident = calloc(1, sizeof(Token));
@@ -933,8 +936,9 @@ static bool codegen_node(Node *node) {
           printf("  .zero %d\n", sizeof_type(node->gvar->type->base));
         }
       } else if (node->gvar->type->ty == TY_STRUCT) {
-        Var *member = node->gvar->type->members->next;
-        for (int i = 0; i < node->nodes->len; i++) {
+        int i;
+        for (i = 0; i < node->nodes->len; i++) {
+          Var *member = node->gvar->type->members->data[i];
           Node *init = node->nodes->data[i];
           switch (sizeof_type(member->type)) {
           case 1:
@@ -949,9 +953,9 @@ static bool codegen_node(Node *node) {
           default:
             error("unsupported member type (%s)", type_to_string(member->type));
           }
-          member = member->next;
         }
-        for (; member; member = member->next) {
+        for (; i < node->gvar->type->members->len; i++) {
+          Var *member = node->gvar->type->members->data[i];
           switch (sizeof_type(member->type)) {
           case 1:
             printf("  .byte 0\n");

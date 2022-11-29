@@ -126,7 +126,7 @@ struct Node {
              // あと ND_STRING のとき str_lits の index
   Var *lvar; // ND_LVAR || ND_VARDECL
   Var *gvar; // ND_VARDECL かつトップレベル
-  Var *locals;
+  List *locals;
 
   int label_index; // ND_WHILE || ND_FOR
                    // FIXME: scope->id ですませられる説がある
@@ -214,7 +214,7 @@ struct Type {
   Type *next;
 
   size_t array_size; // ty == ARRAY
-  Var *members;      // ty == STRUCT
+  List *members;     // of Var *, ty == STRUCT
 
   // 定義されたものはこれ
   char *name;
@@ -225,14 +225,12 @@ extern List *defined_types; // of Type *
 
 // ローカル変数、構造体メンバ、グローバル変数
 struct Var {
-  Var *next;
   char *name;
   int len; // name の長さ
   Type *type;
   int offset; // メモリ上のオフセット。ローカル変数の場合
               // fp からの位置、構造体のメンバの場合は先頭からの位置
   Node *const_val; // 定数のときのみ。 なんなら enum のみ。
-  bool is_struct_member;
 
   bool is_extern;
   int scope_id; // 同じ名前だけどスコープが違うものは別の変数になる。(name,
@@ -252,17 +250,14 @@ struct Func {
   Type *type;
 };
 
-extern Var globals;
-extern Var constants;
-
 int sizeof_type(Type *type);
 Type *typeof_node(Node *node);
 
 char *type_to_string(Type *type);
 
-Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
-             int scope_id);
-Var *find_var(Var *head, char *name, int len);
+Var *add_var(List *vars, char *name, int len, Type *type, bool is_extern,
+             bool is_struct_member, int scope_id);
+Var *find_var(List *vars, char *name, int len);
 
 Type *add_or_find_defined_type(Type *type);
 Type *find_defined_type(char *name, int len);
@@ -279,7 +274,10 @@ struct List {
 
 List *list_new();
 int list_append(List *list, void *data);
+int list_concat(List *list, List *other);
 
-extern List *code;    // of Node *
-extern List *strings; // of String *
-extern List *funcs;   // of Func *
+extern List *code;      // of Node *
+extern List *strings;   // of String *
+extern List *funcs;     // of Func *
+extern List *globals;   // of Var *
+extern List *constants; // of Var *

@@ -72,3 +72,10 @@ int list_append(List *list, void *data) {
   list->data[list->len++] = data;
   return list->len - 1;
 }
+
+int list_concat(List *list, List *other) {
+  for (int i = 0; i < other->len; i++) {
+    list_append(list, other->data[i]);
+  }
+  return list->len - 1;
+}

@@ -90,40 +90,30 @@ Scope *curr_scope;
 int scope_id = 0;
 
 static Var *find_var_in_curr_scope(char *name, int len) {
-  __debug_self("find_var_in_curr_scope: %.*s", len, name);
-
   for (Scope *scope = curr_scope; scope; scope = scope->parent) {
-    __debug_self("  scope->id=%d", scope->id);
-    __debug_self("  scope->node->loacls=%p", scope->node->locals);
-    for (Var *var = scope->node->locals->next; var; var = var->next) {
-      __debug_self("    var=%p", var);
-      __debug_self("    var->name=%.*s (%p)", var->len, var->name, var->name);
-      __debug_self("    var->scope_id=%d, scope->id=%d", var->scope_id,
-                   scope->id);
-      __debug_self("    var->next=%p", var->next);
+    for (int i = 0; i < scope->node->locals->len; i++) {
+      Var *var = scope->node->locals->data[i];
       if (var->scope_id == scope->id && var->len == len &&
           strncmp(var->name, name, len) == 0) {
-        __debug_self("      find_var_in_curr_scope: return");
         return var;
       }
     }
-    __debug_self("  scope->id=%d: end", scope->id);
   }
 
   return NULL;
 }
 
 static int scope_offset(Scope *scope) {
-  int max = scope->node->locals->offset;
-  for (Var *var = scope->node->locals->next; var; var = var->next) {
-    // 常にあとのほうが offset でかいはずなのでこれでよい
-    max = var->offset;
+  if (scope->node->locals->len == 0) {
+    return 0;
   }
-  return max;
+
+  Var *var = scope->node->locals->data[scope->node->locals->len - 1];
+  return var->offset;
 }
 
 static void scope_create(Node *node) {
-  node->locals = calloc(1, sizeof(Var));
+  node->locals = list_new();
 
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
@@ -135,7 +125,7 @@ static void scope_push(Node *node) {
   assert(curr_scope != NULL);
   assert(node->locals == NULL);
 
-  node->locals = calloc(1, sizeof(Var));
+  node->locals = list_new();
 
   Scope *scope = calloc(1, sizeof(Scope));
   scope->node = node;
@@ -150,17 +140,12 @@ static void scope_pop() {
 
   // このスコープに定義された変数を親スコープにマージする
   int offset = scope_offset(parent);
-  for (Var *var = curr_scope->node->locals; var; var = var->next) {
+  for (int i = 0; i < curr_scope->node->locals->len; i++) {
+    Var *var = curr_scope->node->locals->data[i];
     var->offset += offset;
   }
 
-  // ここでやってることがおかしい説
-  for (Var *var = parent->node->locals; var; var = var->next) {
-    if (var->next == NULL) {
-      var->next = curr_scope->node->locals->next;
-      break;
-    }
-  }
+  list_concat(parent->node->locals, curr_scope->node->locals);
 
   curr_scope = parent;
 }
@@ -249,7 +234,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    Var *gvar = find_var(&globals, tok->str, tok->len);
+    Var *gvar = find_var(globals, tok->str, tok->len);
     if (gvar) {
       Node *node = calloc(1, sizeof(Node));
       node->kind = ND_GVAR;
@@ -259,7 +244,7 @@ static Node *parse_primary() {
       return node;
     }
 
-    Var *cvar = find_var(&constants, tok->str, tok->len);
+    Var *cvar = find_var(constants, tok->str, tok->len);
     if (cvar) {
       return cvar->const_val;
     }
@@ -416,13 +401,14 @@ int sizeof_type(Type *type) {
   case TY_ARRAY:
     return type->array_size * sizeof_type(type->base);
   case TY_STRUCT: {
-    Var *m = type->members;
-    if (m == NULL) {
+    if (type->members == NULL) {
       error("sizeof: empty struct");
     }
-    while (m->next)
-      m = m->next;
-    return m ? m->offset + sizeof_type(m->type) : 0;
+    if (type->members->len == 0) {
+      return 0;
+    }
+    Var *last = type->members->data[type->members->len - 1];
+    return last->offset + sizeof_type(last->type);
   }
   case TY_TYPEDEF:
     return sizeof_type(type->base);
@@ -717,8 +703,7 @@ Type *parse_type() {
 
     if (token_consume_punct("{")) {
       // ND_FUNCDECL の場合と似てるかも
-      type->members = calloc(1, sizeof(Var));
-      type->members->is_struct_member = true;
+      type->members = list_new();
 
       while (true) {
         Type *member_type = parse_type();
@@ -732,7 +717,7 @@ Type *parse_type() {
         }
 
         add_var(type->members, member_name->str, member_name->len, member_type,
-                false, -1);
+                /* is_extern */ false, /* is_struct_member */ true, -1);
 
         token_expect_punct(";");
 
@@ -777,8 +762,9 @@ Type *parse_type() {
           error("expected name");
         }
 
-        Var *var = add_var(&constants, enum_item->str, enum_item->len, type,
-                           false, -1);
+        Var *var =
+            add_var(constants, enum_item->str, enum_item->len, type,
+                    /* is_extern */ false, /* is_struct_member */ false, -1);
         var->const_val = new_node_num(i);
 
         if (token_consume_punct("}")) {
@@ -864,7 +850,8 @@ static Node *parse_vardecl() {
   }
 
   Var *lvar = add_var(curr_scope->node->locals, tok_var->str, tok_var->len,
-                      type, false, curr_scope->id);
+                      type, /* is_extern */ false, /* is_struct_member */ false,
+                      curr_scope->id);
 
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_VARDECL;
@@ -1211,7 +1198,8 @@ static Node *parse_decl() {
 
   token_expect_punct(";");
 
-  Var *gvar = add_var(&globals, ident->str, ident->len, type, is_extern, -1);
+  Var *gvar =
+      add_var(globals, ident->str, ident->len, type, is_extern, false, -1);
   node->gvar = gvar;
 
   return node;
@@ -1253,7 +1241,7 @@ static bool _parse_decl_func(Node *node, Type *type) {
       Node *ident = calloc(1, sizeof(Node));
       ident->kind = ND_LVAR;
       Var *lvar = add_var(curr_scope->node->locals, tok->str, tok->len, type,
-                          false, curr_scope->id);
+                          false, false, curr_scope->id);
       ident->lvar = lvar;
       ident->source_pos = tok->str;
       ident->source_len = tok->len;
@@ -1302,6 +1290,8 @@ void parse_program() {
   strings = list_new();
   funcs = list_new();
   defined_types = list_new();
+  globals = list_new();
+  constants = list_new();
 
   while (!token_at_eof()) {
     list_append(code, parse_decl());

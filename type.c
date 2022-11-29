@@ -2,8 +2,8 @@
 
 #include "mocc.h"
 
-Var globals;
-Var constants;
+List *globals;   // of Var *
+List *constants; // of Var *
 List *defined_types;
 
 char *type_to_string(Type *type) {
@@ -34,8 +34,9 @@ char *type_to_string(Type *type) {
   return "(unknown)";
 }
 
-Var *find_var(Var *head, char *name, int len) {
-  for (Var *var = head->next; var; var = var->next) {
+Var *find_var(List *vars, char *name, int len) {
+  for (int i = 0; i < vars->len; i++) {
+    Var *var = vars->data[i];
     if (var->len == len && !strncmp(var->name, name, len)) {
       return var;
     }
@@ -51,17 +52,15 @@ static int roundup_to_dword(int size) {
   return (size + 7) / 8 * 8;
 }
 
-Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
-             int scope_id) {
+Var *add_var(List *vars, char *name, int len, Type *type, bool is_extern,
+             bool is_struct_member, int scope_id) {
   if (type->ty == TY_VOID) {
     error("void is not a valid type");
   }
 
-  bool is_struct_member = head->is_struct_member;
-
-  int offset = head->offset;
-  Var *last = head;
-  for (Var *var = last->next; var; last = var, var = var->next) {
+  int offset = 0;
+  for (int i = 0; i < vars->len; i++) {
+    Var *var = vars->data[i];
     if (var->scope_id == scope_id && var->len == len &&
         !strncmp(var->name, name, len)) {
       if (var->is_extern) {
@@ -82,9 +81,12 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
   var->is_extern = is_extern;
   if (is_struct_member) {
     // ここあまり自信がない
-    if (last->type != NULL) {
+    // FIXME ローカル変数と処理同じにならない？
+    Var *last = vars->len > 0 ? vars->data[vars->len - 1] : NULL;
+    if (last != NULL) {
       offset += sizeof_type(last->type);
     }
+    // TODO: 型ごとのアラインメントが決まってるのでそれにあわせる
     var->offset = sizeof_type(type) == 8 ? roundup_to_dword(offset)
                                          : roundup_to_word(offset);
   } else {
@@ -92,7 +94,7 @@ Var *add_var(Var *head, char *name, int len, Type *type, bool is_extern,
   }
   var->type = type;
 
-  last->next = var;
+  list_append(vars, var);
 
   return var;
 }
@@ -135,18 +137,4 @@ Type *add_or_find_defined_type(Type *type) {
   list_append(defined_types, type);
 
   return type;
-}
-
-Var *find_member(Node *node) {
-  Type *type = typeof_node(node->lhs);
-  if (type->ty != TY_STRUCT) {
-    error("not a struct: (%s)", type_to_string(type));
-  }
-
-  Var *member = find_var(type->members, node->ident->str, node->ident->len);
-  if (member == NULL) {
-    error("member not found: %.*s on (%s)", node->ident->len, node->ident->str,
-          type_to_string(type));
-  }
-  return member;
 }
