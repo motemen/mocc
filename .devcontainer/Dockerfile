@@ -16,7 +16,7 @@ RUN git clone --depth=1 https://github.com/riscv-collab/riscv-gnu-toolchain.git 
     { git submodule update --depth=1 || git submodule foreach 'git fetch --depth=1 origin $(git config -f ../.gitmodules submodule.$sm_path.branch) && git reset --hard FETCH_HEAD'; }
 
 RUN cd riscv-gnu-toolchain && \
-    ./configure --prefix=$RISCV && \
+    ./configure --prefix=$RISCV --with-arch=rv64gc_zfencei && \
     make -j $(nproc)
 
 RUN git clone --depth 1 https://github.com/riscv-software-src/riscv-isa-sim.git && \
